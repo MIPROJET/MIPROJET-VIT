@@ -122,7 +122,8 @@ export const AdminTendersManager = () => {
   const [q, setQ] = useState("");
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [report, setReport] = useState<{ inserted: number; skipped: number; total: number } | null>(null);
+  const [report, setReport] = useState<{ inserted: number; updated: number; skipped: number; total: number } | null>(null);
+  const [mode, setMode] = useState<"skip" | "replace" | "wipe">("replace");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const reload = async () => {
@@ -154,70 +155,101 @@ export const AdminTendersManager = () => {
         .select()
         .single();
 
+      if (mode === "wipe") {
+        await (supabase as any).from("tenders").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      }
+
+      // Build index of existing tenders (id by key) AFTER wipe
       const { data: existing } = await (supabase as any)
         .from("tenders")
-        .select("notice_title,notice_deadline,country_code")
-        .limit(10000);
-      const seen = new Set((existing || []).map((t: any) => tenderKey(t.notice_title, t.notice_deadline, t.country_code || "")));
+        .select("id,notice_title,notice_deadline,country_code")
+        .limit(20000);
+      const existingMap = new Map<string, string>();
+      (existing || []).forEach((t: any) =>
+        existingMap.set(tenderKey(t.notice_title, t.notice_deadline, t.country_code || ""), t.id)
+      );
       const fileSeen = new Set<string>();
 
-      let inserted = 0, skipped = 0;
+      let inserted = 0, updated = 0, skipped = 0;
       const CHUNK = 100;
+
+      const buildRow = (title: string, dl: string, iso: string) => {
+        const cn = ISO_COUNTRY[iso] || iso;
+        const sector = detectSector(title);
+        return {
+          notice_title: title.trim(),
+          notice_deadline: dl,
+          country_code: iso,
+          country: iso,
+          deadline: dl,
+          country_name: cn,
+          sector,
+          summary: `Appel d'offres publié au ${cn} dans le secteur ${sector}. Objet : ${title.slice(0, 140)}.`,
+          title_en: title.trim(),
+          summary_fr: `Appel d'offres publié au ${cn} dans le secteur ${sector}. Objet : ${title.slice(0, 140)}.`,
+          slug: `${slugify(title)}-${Math.random().toString(36).slice(2, 8)}`,
+          status: "active",
+        };
+      };
+
       for (let i = 0; i < rows.length; i += CHUNK) {
-        const slice = rows.slice(i, i + CHUNK).map((r) => {
+        const toInsert: any[] = [];
+        const toUpdate: { id: string; row: any }[] = [];
+
+        for (const r of rows.slice(i, i + CHUNK)) {
           const title = pick(r, header, ["notice_title", "title", "titre", "objet"], 0);
           const deadline = pick(r, header, ["notice_deadline", "deadline", "date limite", "date_limite"], 1);
           const country = pick(r, header, ["country_code", "org_country", "country", "pays"], 2);
           const dl = parseDeadline((deadline || "").trim());
-          if (!title || !dl) { skipped++; return null; }
+          if (!title || !dl) { skipped++; continue; }
           const iso = normalizeCountryCode(country);
           const key = tenderKey(title, dl, iso);
-          if (seen.has(key) || fileSeen.has(key)) { skipped++; return null; }
+          if (fileSeen.has(key)) { skipped++; continue; }
           fileSeen.add(key);
-          const cn = ISO_COUNTRY[iso] || iso;
-          const sector = detectSector(title);
-          return {
-            notice_title: title.trim(),
-            notice_deadline: dl,
-            country_code: iso,
-            country: iso,
-            deadline: dl,
-            country_name: cn,
-            sector,
-            summary: `Appel d'offres publié au ${cn} dans le secteur ${sector}. Objet : ${title.slice(0, 140)}.`,
-            title_en: title.trim(),
-            summary_fr: `Appel d'offres publié au ${cn} dans le secteur ${sector}. Objet : ${title.slice(0, 140)}.`,
-            slug: `${slugify(title)}-${Math.random().toString(36).slice(2, 8)}`,
-            status: "active",
-          };
-        }).filter(Boolean);
+          const row = buildRow(title, dl, iso);
+          const existingId = existingMap.get(key);
+          if (existingId) {
+            if (mode === "replace") toUpdate.push({ id: existingId, row });
+            else skipped++; // skip mode
+          } else {
+            toInsert.push(row);
+          }
+        }
 
-        if (!slice.length) {
-          setProgress(Math.min(100, Math.round(((i + CHUNK) / rows.length) * 100)));
-          continue;
+        if (toInsert.length) {
+          const { data: ins, error } = await (supabase as any).from("tenders").insert(toInsert).select("id,notice_title,notice_deadline,country_code");
+          if (error) {
+            console.error("[tenders import insert]", error);
+            toast({ title: "Erreur SQL (insert)", description: error.message, variant: "destructive" });
+            skipped += toInsert.length;
+          } else {
+            inserted += ins?.length || 0;
+            (ins || []).forEach((t: any) => existingMap.set(tenderKey(t.notice_title, t.notice_deadline, t.country_code || ""), t.id));
+          }
         }
-        const { data: ins, error } = await (supabase as any).from("tenders").insert(slice).select("id,notice_title,notice_deadline,country_code");
-        if (error) {
-          console.error("[tenders import]", error);
-          toast({ title: "Erreur SQL", description: error.message, variant: "destructive" });
-          skipped += slice.length;
-          continue;
+
+        for (const u of toUpdate) {
+          const { error } = await (supabase as any).from("tenders").update({ ...u.row, updated_at: new Date().toISOString() }).eq("id", u.id);
+          if (error) {
+            console.error("[tenders import update]", error);
+            skipped++;
+          } else {
+            updated++;
+          }
         }
-        const did = ins?.length || 0;
-        inserted += did;
-        (ins || []).forEach((t: any) => seen.add(tenderKey(t.notice_title, t.notice_deadline, t.country_code || "")));
+
         setProgress(Math.min(100, Math.round(((i + CHUNK) / rows.length) * 100)));
       }
 
       await (supabase as any).from("tender_import_batches").update({
-        imported_rows: inserted,
+        imported_rows: inserted + updated,
         duplicate_rows: skipped,
       }).eq("id", batch?.id);
 
-      setReport({ inserted, skipped, total: rows.length });
+      setReport({ inserted, updated, skipped, total: rows.length });
       toast({
         title: "Import terminé",
-        description: `${inserted} appel(s) d'offre ajouté(s) — ${skipped} ligne(s) ignorée(s) (doublons exacts titre+date+pays ou ligne invalide).`,
+        description: `${inserted} ajouté(s) · ${updated} mis à jour · ${skipped} ignoré(s).`,
       });
 
       reload();
@@ -227,6 +259,7 @@ export const AdminTendersManager = () => {
       setImporting(false);
     }
   };
+
 
   const archiveOne = async (id: string) => {
     await (supabase as any).from("tenders").update({ status: "archived", updated_at: new Date().toISOString() }).eq("id", id);
@@ -264,10 +297,40 @@ export const AdminTendersManager = () => {
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2"><FileSpreadsheet className="h-5 w-5" /> Importer un CSV</CardTitle></CardHeader>
             <CardContent className="space-y-4">
+              <div className="grid sm:grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setMode("skip")}
+                  className={`text-left rounded-lg border p-3 transition ${mode === "skip" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
+                >
+                  <p className="font-semibold text-sm">Ignorer les doublons</p>
+                  <p className="text-xs text-muted-foreground">N'ajoute que les nouveaux (titre + date + pays).</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode("replace")}
+                  className={`text-left rounded-lg border p-3 transition ${mode === "replace" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
+                >
+                  <p className="font-semibold text-sm">Mettre à jour les existants</p>
+                  <p className="text-xs text-muted-foreground">Réécrit les doublons avec les nouvelles infos (recommandé).</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode("wipe")}
+                  className={`text-left rounded-lg border p-3 transition ${mode === "wipe" ? "border-destructive bg-destructive/5" : "border-border hover:border-destructive/50"}`}
+                >
+                  <p className="font-semibold text-sm text-destructive">Vider puis réimporter</p>
+                  <p className="text-xs text-muted-foreground">Supprime tous les appels d'offres existants avant d'importer.</p>
+                </button>
+              </div>
+
               <div
                 onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
                 onDragOver={(e) => e.preventDefault()}
-                onClick={() => fileRef.current?.click()}
+                onClick={() => {
+                  if (mode === "wipe" && !confirm("Vider TOUS les appels d'offres existants avant import ?")) return;
+                  fileRef.current?.click();
+                }}
                 className="border-2 border-dashed border-border rounded-xl p-10 text-center cursor-pointer hover:border-primary transition"
               >
                 <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
@@ -285,17 +348,12 @@ export const AdminTendersManager = () => {
                 <Card className="bg-muted/40">
                   <CardContent className="p-4">
                     <p className="font-semibold mb-1">Rapport d'import</p>
-                    <p className="text-sm">✅ {report.inserted} ajoutés · ⏭️ {report.skipped} ignorés (doublons exacts titre+date+pays ou lignes invalides) · 📦 {report.total} lignes traitées</p>
-                    {report.skipped > 0 && report.skipped >= report.total - 30 && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Le fichier contient beaucoup de doublons : la déduplication garde uniquement la combinaison unique (titre + date limite + pays). Seuls les appels d'offres réellement nouveaux ont été ajoutés.
-                      </p>
-                    )}
-
+                    <p className="text-sm">✅ {report.inserted} ajoutés · 🔄 {report.updated} mis à jour · ⏭️ {report.skipped} ignorés · 📦 {report.total} lignes traitées</p>
                   </CardContent>
                 </Card>
               )}
             </CardContent>
+
           </Card>
         </TabsContent>
 
