@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { normalizeCountryCode } from "@/lib/countries";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +21,8 @@ export const CountryFlag = ({ code, className, size = 18, rounded = true, title 
   const emoji = normalized
     ? String.fromCodePoint(...normalized.split("").map((char) => 127397 + char.charCodeAt(0)))
     : "🌍";
+
+  useEffect(() => setFailed(false), [iso]);
 
   if (!iso || failed) {
     return (
