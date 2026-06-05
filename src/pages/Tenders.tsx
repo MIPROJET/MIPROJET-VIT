@@ -20,6 +20,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { getTenderSummary, getTenderTitle, translateTenderBatch, type TenderTranslation } from "@/lib/tenderTranslations";
+import { CountryFlag } from "@/components/tenders/CountryFlag";
 
 type Tender = {
   id: string;
@@ -37,11 +38,6 @@ type Tender = {
   views_count: number | null;
 };
 
-const flagEmoji = (iso: string) => {
-  if (!iso || iso.length !== 2) return "🌍";
-  const A = 0x1f1e6;
-  return String.fromCodePoint(...iso.toUpperCase().split("").map((c) => A + c.charCodeAt(0) - 65));
-};
 
 const Tenders = () => {
   const [items, setItems] = useState<Tender[]>([]);
