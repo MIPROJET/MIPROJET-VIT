@@ -25,14 +25,18 @@ export const CountryFlag = ({ code, className, size = 18, rounded = true, title 
       </span>
     );
   }
-  const w2 = Math.max(20, Math.round(size * 1.6));
+  const allowed = [20, 40, 80, 160, 320, 640, 1280, 2560];
+  const target = Math.max(20, Math.round(size * 1.6));
+  const w = allowed.find((x) => x >= target) ?? 40;
+  const w2 = allowed.find((x) => x >= target * 2) ?? 80;
   return (
     <img
-      src={`https://flagcdn.com/${w2}x${Math.round(w2 * 0.75)}/${iso}.png`}
-      srcSet={`https://flagcdn.com/${w2 * 2}x${Math.round(w2 * 0.75) * 2}/${iso}.png 2x`}
+      src={`https://flagcdn.com/w${w}/${iso}.png`}
+      srcSet={`https://flagcdn.com/w${w2}/${iso}.png 2x`}
       alt={title || iso.toUpperCase()}
       title={title || iso.toUpperCase()}
       loading="lazy"
+      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
       className={cn("inline-block object-cover border border-border/40", rounded && "rounded-sm", className)}
       style={{ height: size, width: "auto" }}
     />
