@@ -14,6 +14,7 @@ import { fr } from "date-fns/locale";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { getTenderSummary, getTenderTitle, translateTenderBatch, type TenderTranslation } from "@/lib/tenderTranslations";
 import { CountryFlag } from "@/components/tenders/CountryFlag";
+import { countryNameFromCode } from "@/lib/countries";
 
 
 const TenderDetail = () => {
@@ -76,6 +77,7 @@ const TenderDetail = () => {
   const dl = new Date(tender.notice_deadline);
   const days = Math.ceil((+dl - Date.now()) / 86400000);
   const archived = tender.status === "archived";
+  const countryName = countryNameFromCode(tender.country_code, tender.country_name);
 
   return (
     <div className="min-h-screen bg-background">
@@ -89,8 +91,8 @@ const TenderDetail = () => {
           <Card>
             <CardContent className="p-6 md:p-10">
               <div className="flex flex-wrap items-center gap-2 mb-4">
-                <CountryFlag code={tender.country_code} size={26} />
-                <Badge variant="secondary" className="text-sm">{tender.country_name || tender.country_code}</Badge>
+                <CountryFlag code={tender.country_code || tender.country_name} size={26} />
+                <Badge variant="secondary" className="text-sm">{countryName}</Badge>
 
                 {tender.sector && (
                   <Badge className="bg-primary/10 text-primary border-primary/20" variant="outline">
@@ -115,7 +117,7 @@ const TenderDetail = () => {
                   <MapPin className="h-5 w-5 text-primary mt-0.5" />
                   <div>
                     <p className="text-xs text-muted-foreground">Pays émetteur</p>
-                    <p className="font-semibold">{tender.country_name || tender.country_code}</p>
+                    <p className="font-semibold">{countryName}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">

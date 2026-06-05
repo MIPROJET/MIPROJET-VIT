@@ -21,6 +21,7 @@ import { fr } from "date-fns/locale";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { getTenderSummary, getTenderTitle, translateTenderBatch, type TenderTranslation } from "@/lib/tenderTranslations";
 import { CountryFlag } from "@/components/tenders/CountryFlag";
+import { countryNameFromCode, normalizeCountryCode } from "@/lib/countries";
 
 type Tender = {
   id: string;
@@ -67,7 +68,10 @@ const Tenders = () => {
 
   const countries = useMemo(() => {
     const m = new Map<string, string>();
-    items.forEach((t) => m.set(t.country_code, t.country_name || t.country_code));
+    items.forEach((t) => {
+      const iso = normalizeCountryCode(t.country_code || t.country_name);
+      if (iso) m.set(iso, countryNameFromCode(iso, t.country_name));
+    });
     return Array.from(m.entries()).sort((a, b) => a[1].localeCompare(b[1]));
   }, [items]);
   const sectors = useMemo(
@@ -79,7 +83,7 @@ const Tenders = () => {
     let arr = items;
     const q = search.trim().toLowerCase();
     if (q) arr = arr.filter((t) => t.notice_title.toLowerCase().includes(q));
-    if (country !== "all") arr = arr.filter((t) => t.country_code === country);
+    if (country !== "all") arr = arr.filter((t) => normalizeCountryCode(t.country_code || t.country_name) === country);
     if (sector !== "all") arr = arr.filter((t) => t.sector === sector);
     if (sort === "newest") {
       arr = [...arr].sort((a, b) => +new Date(b.notice_deadline) - +new Date(a.notice_deadline));
@@ -206,9 +210,9 @@ const Tenders = () => {
                     <CardContent className="p-3 sm:p-4 flex flex-col h-full">
                       <div className="flex items-center justify-between gap-2 mb-2">
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <CountryFlag code={t.country_code} size={14} />
+                          <CountryFlag code={t.country_code || t.country_name} size={14} />
                           <span className="text-[11px] sm:text-xs font-medium text-muted-foreground truncate">
-                            {t.country_name || t.country_code}
+                            {countryNameFromCode(t.country_code, t.country_name)}
                           </span>
                         </div>
                         {t.sector && (
