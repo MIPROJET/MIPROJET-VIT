@@ -153,14 +153,12 @@ export const AdminTendersManager = () => {
       const CHUNK = 100;
 
       const buildRow = (title: string, dl: string, iso: string) => {
-        const cn = ISO_COUNTRY[iso] || iso;
+        const cn = countryNameFromCode(iso);
         const sector = detectSector(title);
         return {
           notice_title: title.trim(),
           notice_deadline: dl,
           country_code: iso,
-          country: iso,
-          deadline: dl,
           country_name: cn,
           sector,
           summary: `Appel d'offres publié au ${cn} dans le secteur ${sector}. Objet : ${title.slice(0, 140)}.`,
