@@ -12,6 +12,7 @@ import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { countryNameFromCode, normalizeCountryCode } from "@/lib/countries";
+import { CountryFlag } from "@/components/tenders/CountryFlag";
 
 type Tender = any;
 type Batch = any;
@@ -180,6 +181,7 @@ export const AdminTendersManager = () => {
           const dl = parseDeadline((deadline || "").trim());
           if (!title || !dl) { skipped++; continue; }
           const iso = normalizeCountryCode(country);
+          if (!iso) { skipped++; continue; }
           const key = tenderKey(title, dl, iso);
           if (fileSeen.has(key)) { skipped++; continue; }
           fileSeen.add(key);
@@ -234,6 +236,7 @@ export const AdminTendersManager = () => {
       toast({ title: "Erreur d'import", description: e.message, variant: "destructive" });
     } finally {
       setImporting(false);
+      if (fileRef.current) fileRef.current.value = "";
     }
   };
 
@@ -349,7 +352,7 @@ export const AdminTendersManager = () => {
                   {filter(active).slice(0, 200).map((t) => (
                     <TableRow key={t.id}>
                       <TableCell className="max-w-md truncate">{t.notice_title}</TableCell>
-                      <TableCell>{t.country_name || t.country_code || t.country}</TableCell>
+                      <TableCell><span className="inline-flex items-center gap-2"><CountryFlag code={t.country_code || t.country} size={14} />{t.country_name || t.country_code || t.country}</span></TableCell>
                       <TableCell><Badge variant="secondary">{t.sector || "—"}</Badge></TableCell>
                       <TableCell className="text-xs">{format(new Date(t.notice_deadline), "dd MMM yy", { locale: fr })}</TableCell>
                       <TableCell>{t.views_count || t.view_count || 0}</TableCell>
@@ -379,7 +382,7 @@ export const AdminTendersManager = () => {
                   {archived.slice(0, 200).map((t) => (
                     <TableRow key={t.id}>
                       <TableCell className="max-w-md truncate">{t.notice_title}</TableCell>
-                      <TableCell>{t.country_name || t.country_code || t.country}</TableCell>
+                      <TableCell><span className="inline-flex items-center gap-2"><CountryFlag code={t.country_code || t.country} size={14} />{t.country_name || t.country_code || t.country}</span></TableCell>
                       <TableCell className="text-xs">{t.updated_at ? format(new Date(t.updated_at), "dd MMM yy", { locale: fr }) : "—"}</TableCell>
                       <TableCell>
                         <Button size="sm" variant="ghost" onClick={() => restoreOne(t.id)}><RotateCcw className="h-3.5 w-3.5 mr-1" /> Restaurer</Button>

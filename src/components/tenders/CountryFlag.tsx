@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { normalizeCountryCode } from "@/lib/countries";
 import { cn } from "@/lib/utils";
 
 interface CountryFlagProps {
@@ -13,15 +15,22 @@ interface CountryFlagProps {
  * including Windows desktop where flag emojis are not rendered.
  */
 export const CountryFlag = ({ code, className, size = 18, rounded = true, title }: CountryFlagProps) => {
-  const iso = (code || "").toLowerCase();
-  if (!iso || iso.length !== 2) {
+  const [failed, setFailed] = useState(false);
+  const normalized = normalizeCountryCode(code);
+  const iso = normalized.toLowerCase();
+  const emoji = normalized
+    ? String.fromCodePoint(...normalized.split("").map((char) => 127397 + char.charCodeAt(0)))
+    : "🌍";
+
+  if (!iso || failed) {
     return (
       <span
-        className={cn("inline-flex items-center justify-center bg-muted text-muted-foreground", rounded && "rounded-sm", className)}
+        className={cn("inline-flex items-center justify-center bg-muted text-muted-foreground leading-none", rounded && "rounded-sm", className)}
         style={{ height: size, width: Math.round(size * 1.5), fontSize: size * 0.7 }}
-        aria-hidden
+        title={title || normalized || undefined}
+        aria-label={title || normalized || "Pays"}
       >
-        🌍
+        {emoji}
       </span>
     );
   }
@@ -36,7 +45,7 @@ export const CountryFlag = ({ code, className, size = 18, rounded = true, title 
       alt={title || iso.toUpperCase()}
       title={title || iso.toUpperCase()}
       loading="lazy"
-      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+      onError={() => setFailed(true)}
       className={cn("inline-block object-cover border border-border/40", rounded && "rounded-sm", className)}
       style={{ height: size, width: "auto" }}
     />
