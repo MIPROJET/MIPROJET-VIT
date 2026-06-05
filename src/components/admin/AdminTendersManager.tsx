@@ -11,23 +11,10 @@ import { Upload, FileSpreadsheet, Archive, RotateCcw, Trash2, ExternalLink, Sear
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { countryNameFromCode, normalizeCountryCode } from "@/lib/countries";
 
 type Tender = any;
 type Batch = any;
-
-const ISO_COUNTRY: Record<string, string> = {
-  KE: "Kenya", TN: "Tunisie", RW: "Rwanda", ZA: "Afrique du Sud", CM: "Cameroun",
-  MA: "Maroc", ET: "Éthiopie", MG: "Madagascar", ZW: "Zimbabwe", TZ: "Tanzanie",
-  GA: "Gabon", CI: "Côte d'Ivoire", SN: "Sénégal", BJ: "Bénin", BF: "Burkina Faso",
-  NG: "Nigéria", GH: "Ghana", ML: "Mali", CD: "RD Congo", CG: "Congo",
-};
-
-const COUNTRY_TO_ISO = Object.fromEntries(
-  Object.entries(ISO_COUNTRY).flatMap(([iso, name]) => [
-    [name.toLowerCase(), iso],
-    [name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(), iso],
-  ])
-) as Record<string, string>;
 
 const detectSector = (t: string) => {
   const tl = t.toLowerCase();
@@ -96,14 +83,6 @@ const parseDeadline = (s: string) => {
   const dd = first > 12 ? a : b;
   const mm = first > 12 ? b : a;
   return new Date(`${yyyy}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}T${hh.padStart(2, "0")}:${mi.padStart(2, "0")}:${ss.padStart(2, "0")}Z`).toISOString();
-};
-
-const normalizeCountryCode = (country: string) => {
-  const raw = (country || "").trim();
-  if (!raw) return "";
-  if (/^[a-z]{2}$/i.test(raw)) return raw.toUpperCase();
-  const key = raw.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-  return COUNTRY_TO_ISO[key] || raw.slice(0, 2).toUpperCase();
 };
 
 const norm = (s: string) => (s || "").trim().toLowerCase().replace(/\s+/g, " ");
