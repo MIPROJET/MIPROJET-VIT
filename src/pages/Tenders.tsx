@@ -203,34 +203,34 @@ const Tenders = () => {
               return (
                 <Link key={t.id} to={`/appels-doffres/${t.slug || t.id}`}>
                   <Card className="h-full hover:shadow-elegant transition-all border-border/60 hover:border-primary/40 group">
-                    <CardContent className="p-4 flex flex-col h-full">
-                      <div className="flex items-center justify-between gap-2 mb-2.5">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xl leading-none">{flagEmoji(t.country_code)}</span>
-                          <span className="text-xs font-medium text-muted-foreground">
+                    <CardContent className="p-3 sm:p-4 flex flex-col h-full">
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <CountryFlag code={t.country_code} size={14} />
+                          <span className="text-[11px] sm:text-xs font-medium text-muted-foreground truncate">
                             {t.country_name || t.country_code}
                           </span>
                         </div>
                         {t.sector && (
-                          <Badge variant="secondary" className="max-w-[120px] truncate text-[10px]">{t.sector}</Badge>
+                          <Badge variant="secondary" className="max-w-[110px] truncate text-[10px] px-1.5 py-0">{t.sector}</Badge>
                         )}
                       </div>
-                      <h3 className="text-sm font-semibold leading-snug line-clamp-3 group-hover:text-primary transition-colors">
+                      <h3 className="text-[13px] sm:text-sm font-semibold leading-snug line-clamp-2 sm:line-clamp-3 group-hover:text-primary transition-colors">
                         {title}
                       </h3>
                       {summary && (
-                        <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{summary}</p>
+                        <p className="hidden sm:block text-xs text-muted-foreground mt-2 line-clamp-2">{summary}</p>
                       )}
-                      <div className="mt-auto pt-3 border-t border-border/50 flex items-center justify-between gap-2 text-xs">
-                        <span className="flex items-center gap-1.5">
-                          <Calendar className="h-3.5 w-3.5" />
-                          {format(dl, "dd MMM yyyy", { locale: fr })}
+                      <div className="mt-auto pt-2 sm:pt-3 border-t border-border/50 flex items-center justify-between gap-2 text-[11px] sm:text-xs">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                          {format(dl, "dd MMM yy", { locale: fr })}
                         </span>
                         <Badge
                           className={
                             urgent
-                              ? "bg-destructive/10 text-destructive border-destructive/20"
-                              : "bg-primary/10 text-primary border-primary/20"
+                              ? "bg-destructive/10 text-destructive border-destructive/20 px-1.5 py-0 text-[10px]"
+                              : "bg-primary/10 text-primary border-primary/20 px-1.5 py-0 text-[10px]"
                           }
                           variant="outline"
                         >
@@ -238,6 +238,7 @@ const Tenders = () => {
                         </Badge>
                       </div>
                     </CardContent>
+
                   </Card>
                 </Link>
               );
