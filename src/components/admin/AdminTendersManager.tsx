@@ -122,7 +122,8 @@ export const AdminTendersManager = () => {
   const [q, setQ] = useState("");
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [report, setReport] = useState<{ inserted: number; skipped: number; total: number } | null>(null);
+  const [report, setReport] = useState<{ inserted: number; updated: number; skipped: number; total: number } | null>(null);
+  const [mode, setMode] = useState<"skip" | "replace" | "wipe">("replace");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const reload = async () => {
