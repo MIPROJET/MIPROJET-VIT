@@ -155,70 +155,101 @@ export const AdminTendersManager = () => {
         .select()
         .single();
 
+      if (mode === "wipe") {
+        await (supabase as any).from("tenders").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      }
+
+      // Build index of existing tenders (id by key) AFTER wipe
       const { data: existing } = await (supabase as any)
         .from("tenders")
-        .select("notice_title,notice_deadline,country_code")
-        .limit(10000);
-      const seen = new Set((existing || []).map((t: any) => tenderKey(t.notice_title, t.notice_deadline, t.country_code || "")));
+        .select("id,notice_title,notice_deadline,country_code")
+        .limit(20000);
+      const existingMap = new Map<string, string>();
+      (existing || []).forEach((t: any) =>
+        existingMap.set(tenderKey(t.notice_title, t.notice_deadline, t.country_code || ""), t.id)
+      );
       const fileSeen = new Set<string>();
 
-      let inserted = 0, skipped = 0;
+      let inserted = 0, updated = 0, skipped = 0;
       const CHUNK = 100;
+
+      const buildRow = (title: string, dl: string, iso: string) => {
+        const cn = ISO_COUNTRY[iso] || iso;
+        const sector = detectSector(title);
+        return {
+          notice_title: title.trim(),
+          notice_deadline: dl,
+          country_code: iso,
+          country: iso,
+          deadline: dl,
+          country_name: cn,
+          sector,
+          summary: `Appel d'offres publié au ${cn} dans le secteur ${sector}. Objet : ${title.slice(0, 140)}.`,
+          title_en: title.trim(),
+          summary_fr: `Appel d'offres publié au ${cn} dans le secteur ${sector}. Objet : ${title.slice(0, 140)}.`,
+          slug: `${slugify(title)}-${Math.random().toString(36).slice(2, 8)}`,
+          status: "active",
+        };
+      };
+
       for (let i = 0; i < rows.length; i += CHUNK) {
-        const slice = rows.slice(i, i + CHUNK).map((r) => {
+        const toInsert: any[] = [];
+        const toUpdate: { id: string; row: any }[] = [];
+
+        for (const r of rows.slice(i, i + CHUNK)) {
           const title = pick(r, header, ["notice_title", "title", "titre", "objet"], 0);
           const deadline = pick(r, header, ["notice_deadline", "deadline", "date limite", "date_limite"], 1);
           const country = pick(r, header, ["country_code", "org_country", "country", "pays"], 2);
           const dl = parseDeadline((deadline || "").trim());
-          if (!title || !dl) { skipped++; return null; }
+          if (!title || !dl) { skipped++; continue; }
           const iso = normalizeCountryCode(country);
           const key = tenderKey(title, dl, iso);
-          if (seen.has(key) || fileSeen.has(key)) { skipped++; return null; }
+          if (fileSeen.has(key)) { skipped++; continue; }
           fileSeen.add(key);
-          const cn = ISO_COUNTRY[iso] || iso;
-          const sector = detectSector(title);
-          return {
-            notice_title: title.trim(),
-            notice_deadline: dl,
-            country_code: iso,
-            country: iso,
-            deadline: dl,
-            country_name: cn,
-            sector,
-            summary: `Appel d'offres publié au ${cn} dans le secteur ${sector}. Objet : ${title.slice(0, 140)}.`,
-            title_en: title.trim(),
-            summary_fr: `Appel d'offres publié au ${cn} dans le secteur ${sector}. Objet : ${title.slice(0, 140)}.`,
-            slug: `${slugify(title)}-${Math.random().toString(36).slice(2, 8)}`,
-            status: "active",
-          };
-        }).filter(Boolean);
+          const row = buildRow(title, dl, iso);
+          const existingId = existingMap.get(key);
+          if (existingId) {
+            if (mode === "replace") toUpdate.push({ id: existingId, row });
+            else skipped++; // skip mode
+          } else {
+            toInsert.push(row);
+          }
+        }
 
-        if (!slice.length) {
-          setProgress(Math.min(100, Math.round(((i + CHUNK) / rows.length) * 100)));
-          continue;
+        if (toInsert.length) {
+          const { data: ins, error } = await (supabase as any).from("tenders").insert(toInsert).select("id,notice_title,notice_deadline,country_code");
+          if (error) {
+            console.error("[tenders import insert]", error);
+            toast({ title: "Erreur SQL (insert)", description: error.message, variant: "destructive" });
+            skipped += toInsert.length;
+          } else {
+            inserted += ins?.length || 0;
+            (ins || []).forEach((t: any) => existingMap.set(tenderKey(t.notice_title, t.notice_deadline, t.country_code || ""), t.id));
+          }
         }
-        const { data: ins, error } = await (supabase as any).from("tenders").insert(slice).select("id,notice_title,notice_deadline,country_code");
-        if (error) {
-          console.error("[tenders import]", error);
-          toast({ title: "Erreur SQL", description: error.message, variant: "destructive" });
-          skipped += slice.length;
-          continue;
+
+        for (const u of toUpdate) {
+          const { error } = await (supabase as any).from("tenders").update({ ...u.row, updated_at: new Date().toISOString() }).eq("id", u.id);
+          if (error) {
+            console.error("[tenders import update]", error);
+            skipped++;
+          } else {
+            updated++;
+          }
         }
-        const did = ins?.length || 0;
-        inserted += did;
-        (ins || []).forEach((t: any) => seen.add(tenderKey(t.notice_title, t.notice_deadline, t.country_code || "")));
+
         setProgress(Math.min(100, Math.round(((i + CHUNK) / rows.length) * 100)));
       }
 
       await (supabase as any).from("tender_import_batches").update({
-        imported_rows: inserted,
+        imported_rows: inserted + updated,
         duplicate_rows: skipped,
       }).eq("id", batch?.id);
 
-      setReport({ inserted, skipped, total: rows.length });
+      setReport({ inserted, updated, skipped, total: rows.length });
       toast({
         title: "Import terminé",
-        description: `${inserted} appel(s) d'offre ajouté(s) — ${skipped} ligne(s) ignorée(s) (doublons exacts titre+date+pays ou ligne invalide).`,
+        description: `${inserted} ajouté(s) · ${updated} mis à jour · ${skipped} ignoré(s).`,
       });
 
       reload();
@@ -228,6 +259,7 @@ export const AdminTendersManager = () => {
       setImporting(false);
     }
   };
+
 
   const archiveOne = async (id: string) => {
     await (supabase as any).from("tenders").update({ status: "archived", updated_at: new Date().toISOString() }).eq("id", id);
