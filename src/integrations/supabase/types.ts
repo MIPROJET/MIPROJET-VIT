@@ -1061,6 +1061,75 @@ export type Database = {
           },
         ]
       }
+      mp_support_tickets: {
+        Row: {
+          admin_response: string | null
+          category: string
+          created_at: string
+          id: string
+          message: string
+          plan_at_creation: Database["public"]["Enums"]["mp_plan_tier"]
+          priority: string
+          status: string
+          subject: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_response?: string | null
+          category?: string
+          created_at?: string
+          id?: string
+          message: string
+          plan_at_creation?: Database["public"]["Enums"]["mp_plan_tier"]
+          priority?: string
+          status?: string
+          subject: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_response?: string | null
+          category?: string
+          created_at?: string
+          id?: string
+          message?: string
+          plan_at_creation?: Database["public"]["Enums"]["mp_plan_tier"]
+          priority?: string
+          status?: string
+          subject?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      mp_user_plans: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          started_at: string
+          tier: Database["public"]["Enums"]["mp_plan_tier"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          started_at?: string
+          tier?: Database["public"]["Enums"]["mp_plan_tier"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          started_at?: string
+          tier?: Database["public"]["Enums"]["mp_plan_tier"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       news: {
         Row: {
           archived_at: string | null
@@ -1504,6 +1573,7 @@ export type Database = {
           id: string
           is_verified: boolean | null
           last_name: string | null
+          mp_onboarded_at: string | null
           phone: string | null
           referral_code: string | null
           referred_by_code: string | null
@@ -1530,6 +1600,7 @@ export type Database = {
           id: string
           is_verified?: boolean | null
           last_name?: string | null
+          mp_onboarded_at?: string | null
           phone?: string | null
           referral_code?: string | null
           referred_by_code?: string | null
@@ -1556,6 +1627,7 @@ export type Database = {
           id?: string
           is_verified?: boolean | null
           last_name?: string | null
+          mp_onboarded_at?: string | null
           phone?: string | null
           referral_code?: string | null
           referred_by_code?: string | null
@@ -2350,7 +2422,7 @@ export type Database = {
       user_profile_type: { Args: { _user_id: string }; Returns: string }
     }
     Enums: {
-      [_ in never]: never
+      mp_plan_tier: "free" | "growth" | "partner"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2477,6 +2549,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      mp_plan_tier: ["free", "growth", "partner"],
+    },
   },
 } as const
