@@ -83,7 +83,7 @@ const Subscription = () => {
             <p className="text-lg text-muted-foreground mb-4">
               <strong>Porteurs de projet</strong>, <strong>entreprises</strong>, <strong>partenaires techniques</strong>,
               <strong> investisseurs</strong>, <strong>bailleurs</strong> et <strong>institutions</strong> : MIPROJET
-              est la plateforme panafricaine de structuration et de mise en relation pour des projets sérieux,
+              est la plateforme africaine de structuration et de mise en relation pour des projets sérieux,
               audités et à fort impact.
             </p>
             <p className="text-base text-muted-foreground mb-8">
@@ -132,7 +132,7 @@ const Subscription = () => {
               </Card>
               <Card className="p-6">
                 <Users className="h-10 w-10 text-primary mx-auto mb-4" />
-                <h3 className="font-semibold mb-2">Réseau panafricain</h3>
+                <h3 className="font-semibold mb-2">Réseau africain</h3>
                 <p className="text-sm text-muted-foreground">Porteurs, investisseurs, bailleurs et experts réunis dans un même écosystème de confiance.</p>
               </Card>
             </div>

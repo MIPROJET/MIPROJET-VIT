@@ -91,7 +91,7 @@ export const EmailTemplateManager = ({ onUseTemplate }: EmailTemplateManagerProp
         subject: `Bienvenue sur MIPROJET, ${vars.name} ! 🎉`,
         html: `<!DOCTYPE html><html><head>${baseStyle}</head><body>
           <div class="container">
-            <div class="header"><h1>MIPROJET</h1><p>Plateforme Panafricaine de Structuration de Projets</p></div>
+            <div class="header"><h1>MIPROJET</h1><p>Plateforme Africaine de Structuration de Projets</p></div>
             <div class="body">
               <h2>Bienvenue, ${vars.name} ! 🎉</h2>
               <p>Votre inscription sur MIPROJET a été confirmée avec succès. Vous faites désormais partie d'une communauté dynamique de porteurs de projets en Afrique.</p>

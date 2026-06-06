@@ -30,7 +30,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'nav.blog': 'Blog',
     
     // Hero
-    'hero.titleLine1': 'Plateforme panafricaine de structuration',
+    'hero.titleLine1': 'Plateforme africaine de structuration',
     'hero.titleLine2': 'et d\'orientation de projets',
     'hero.description': 'MIPROJET accompagne les porteurs de projets dans la structuration et la préparation de dossiers bancables, puis les oriente vers des partenaires adaptés.',
     'hero.submitProject': 'Soumettre mon projet',
@@ -139,7 +139,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'features.structuring.description': 'Business plan, étude de faisabilité et analyse de risques selon les standards internationaux.',
     'features.security.title': 'Confidentialité Garantie',
     'features.security.description': 'Protection de vos données et documents sensibles avec les plus hauts standards de confidentialité.',
-    'features.network.title': 'Réseau Panafricain',
+    'features.network.title': 'Réseau Africain',
     'features.network.description': 'Accès à plus de 5 000 membres, investisseurs et experts à travers l\'Afrique.',
     'features.tracking.title': 'Suivi Transparent',
     'features.tracking.description': 'Rapports d\'avancement réguliers et tableau de bord en temps réel avec indicateurs clés.',
@@ -371,7 +371,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'news.noNews': 'Aucune actualité disponible pour le moment',
     
     // Footer
-    'footer.description': 'Plateforme panafricaine spécialisée dans la structuration professionnelle et l\'accompagnement de projets à fort impact en Afrique.',
+    'footer.description': 'Plateforme africaine spécialisée dans la structuration professionnelle et l\'accompagnement de projets à fort impact en Afrique.',
     'footer.tagline': 'De l\'idée au financement, ensemble construisons l\'avenir.',
     'footer.rights': 'Tous droits réservés',
     'footer.quickLinks': 'Liens rapides',
@@ -1751,7 +1751,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'nav.blog': 'Blog',
     
     // Hero
-    'hero.titleLine1': 'Plataforma panafricana de estructuración',
+    'hero.titleLine1': 'Plataforma africana de estructuración',
     'hero.titleLine2': 'de proyectos y facilitación de financiamiento',
     'hero.description': 'MIPROJET apoya a los propietarios de proyectos en la estructuración y preparación de archivos bancables y facilita su conexión con inversores y socios financieros.',
     'hero.submitProject': 'Enviar mi proyecto',
@@ -1854,7 +1854,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'features.quality.description': 'Validación profesional ISO 21500 y puntuación de credibilidad transparente para inversores y socios.',
     'features.structuring.title': 'Estructuración Profesional',
     'features.structuring.description': 'Plan de negocios, estudio de viabilidad y análisis de riesgos según estándares internacionales.',
-    'features.network.title': 'Red Panafricana',
+    'features.network.title': 'Red Africana',
     'features.network.description': 'Acceso a más de 5,000 miembros, inversores y expertos en toda África.',
     'features.tracking.title': 'Seguimiento Transparente',
     'features.tracking.description': 'Informes de progreso regulares y panel de control en tiempo real con indicadores clave.',
@@ -1977,7 +1977,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'common.upload': 'Subir',
     
     // Footer
-    'footer.description': 'Plataforma panafricana especializada en estructuración profesional y apoyo de proyectos de alto impacto en África.',
+    'footer.description': 'Plataforma africana especializada en estructuración profesional y apoyo de proyectos de alto impacto en África.',
     'footer.tagline': 'De la idea al financiamiento, juntos construyamos el futuro.',
     'footer.rights': 'Todos los derechos reservados',
     'footer.quickLinks': 'Enlaces rápidos',

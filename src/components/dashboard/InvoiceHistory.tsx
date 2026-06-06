@@ -169,7 +169,7 @@ export const InvoiceHistory = () => {
         ${invoice.notes ? `<p style="margin-top: 30px; font-style: italic; color: #666;">Notes: ${invoice.notes}</p>` : ''}
         
         <div class="footer">
-          <p>MIPROJET - Plateforme Panafricaine de Structuration et de Financement de Projets</p>
+          <p>MIPROJET - Plateforme Africaine de Structuration et de Financement de Projets</p>
           <p>www.miprojet.ci | info@ivoireprojet.com</p>
         </div>
       </body>

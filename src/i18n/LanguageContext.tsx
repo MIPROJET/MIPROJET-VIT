@@ -67,20 +67,20 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
 // Update meta tags based on language
 const updateMetaTags = (lang: Language) => {
   const metaDescriptions: Record<Language, string> = {
-    fr: "Plateforme panafricaine de structuration professionnelle de projets. MIPROJET accompagne les porteurs de projets dans la structuration selon la norme ISO 21500 et les oriente vers des partenaires adaptés.",
+    fr: "Plateforme africaine de structuration professionnelle de projets. MIPROJET accompagne les porteurs de projets dans la structuration selon la norme ISO 21500 et les oriente vers des partenaires adaptés.",
     en: "Pan-African platform for professional project structuring. MIPROJET supports project owners in ISO 21500 compliant structuring and guides them to suitable partners.",
     ar: "منصة أفريقية للهيكلة المهنية للمشاريع. MIPROJET يدعم أصحاب المشاريع في الهيكلة وفقًا لمعيار ISO 21500 ويوجههم إلى الشركاء المناسبين.",
     zh: "泛非专业项目结构化平台。MIPROJET支持项目负责人按照ISO 21500标准进行结构化，并引导他们找到合适的合作伙伴。",
-    es: "Plataforma panafricana de estructuración profesional de proyectos. MIPROJET apoya a los emprendedores en la estructuración según la norma ISO 21500 y los orienta hacia socios adecuados.",
+    es: "Plataforma africana de estructuración profesional de proyectos. MIPROJET apoya a los emprendedores en la estructuración según la norma ISO 21500 y los orienta hacia socios adecuados.",
     de: "Panafrikanische Plattform für professionelle Projektstrukturierung. MIPROJET unterstützt Projektinhaber bei der ISO 21500-konformen Strukturierung und leitet sie zu geeigneten Partnern.",
   };
 
   const metaTitles: Record<Language, string> = {
-    fr: "MIPROJET - Structuration Professionnelle de Projets | Plateforme Panafricaine",
+    fr: "MIPROJET - Structuration Professionnelle de Projets | Plateforme Africaine",
     en: "MIPROJET - Professional Project Structuring | Pan-African Platform",
     ar: "MIPROJET - هيكلة مهنية للمشاريع | منصة أفريقية",
     zh: "MIPROJET - 专业项目结构化 | 泛非平台",
-    es: "MIPROJET - Estructuración Profesional de Proyectos | Plataforma Panafricana",
+    es: "MIPROJET - Estructuración Profesional de Proyectos | Plataforma Africana",
     de: "MIPROJET - Professionelle Projektstrukturierung | Panafrikanische Plattform",
   };
 
