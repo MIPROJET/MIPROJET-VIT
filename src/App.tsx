@@ -51,6 +51,7 @@ const Documents = lazy(() => import("./pages/Documents"));
 const MiProjetPlusLanding = lazy(() => import("./pages/miprojet-plus/MiProjetPlusLanding"));
 const MiProjetPlusApp = lazy(() => import("./pages/miprojet-plus/MiProjetPlusApp"));
 const Journey = lazy(() => import("./pages/Journey"));
+const NotreParcours = lazy(() => import("./pages/NotreParcours"));
 const ShortLink = lazy(() => import("./pages/ShortLink"));
 const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 const Tenders = lazy(() => import("./pages/Tenders"));
@@ -123,6 +124,11 @@ const App = () => (
             <Route path="/journey" element={
               <Suspense fallback={<PageLoader />}>
                 <Journey />
+              </Suspense>
+            } />
+            <Route path="/notre-parcours" element={
+              <Suspense fallback={<PageLoader />}>
+                <NotreParcours />
               </Suspense>
             } />
             <Route path="/project-evaluation/:projectId" element={
