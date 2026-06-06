@@ -103,7 +103,7 @@ export const Hero = () => {
           type: "news",
           title: "Structurez, financez et incubez vos projets en Afrique",
           excerpt:
-            "MIPROJET accompagne les entrepreneurs et investisseurs panafricains avec des outils professionnels.",
+            "MIPROJET accompagne les entrepreneurs et investisseurs africains avec des outils professionnels.",
           image: heroFallback,
           href: "/projects",
           badge: "MIPROJET",
@@ -140,7 +140,7 @@ export const Hero = () => {
           {/* Left intro */}
           <div className="lg:col-span-5 text-white space-y-5 reveal-up">
             <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/15 text-[11px] font-bold uppercase tracking-[0.18em] backdrop-blur-md">
-              <Sparkles className="h-3.5 w-3.5 text-secondary-glow" /> Plateforme panafricaine
+              <Sparkles className="h-3.5 w-3.5 text-secondary-glow" /> Plateforme africaine
             </span>
             <h1 className="text-display text-4xl sm:text-5xl lg:text-[3.5rem] leading-[1.05]">
               Structurez,{" "}

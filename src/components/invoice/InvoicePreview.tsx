@@ -293,7 +293,7 @@ export const InvoicePreview = ({
               </div>
               <div className="text-xs text-gray-500 space-y-1">
                 <p>
-                  <strong>MIPROJET</strong> - Plateforme Panafricaine de Structuration et de Financement de Projets
+                  <strong>MIPROJET</strong> - Plateforme Africaine de Structuration et de Financement de Projets
                 </p>
                 <p>
                   www.ivoireprojet.com | info@ivoireprojet.com | +225 07 07 16 79 21

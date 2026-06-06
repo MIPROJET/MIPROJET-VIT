@@ -229,7 +229,7 @@ export const ProjectPDFExport = ({
           ` : ''}
 
           <div class="footer">
-            <p><strong>MIPROJET</strong> - Plateforme Panafricaine de Structuration de Projets</p>
+            <p><strong>MIPROJET</strong> - Plateforme Africaine de Structuration de Projets</p>
             <p>Bingerville – Adjin Palmeraie, Abidjan, Côte d'Ivoire</p>
             <p>+225 07 07 16 79 21 | info@ivoireprojet.com</p>
             <p style="margin-top: 10px;">Document généré le ${new Date().toLocaleDateString('fr-FR', { 

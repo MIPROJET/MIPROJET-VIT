@@ -103,7 +103,7 @@ export const WelcomePopup = () => {
 
           {/* Description */}
           <p className="text-white/90 text-sm sm:text-base leading-relaxed mb-6">
-            Plateforme panafricaine de structuration et d'orientation de projets. 
+            Plateforme africaine de structuration et d'orientation de projets. 
             Transformez votre idée en projet crédible et prêt pour le financement.
           </p>
 

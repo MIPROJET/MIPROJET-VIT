@@ -153,7 +153,7 @@ const WelcomePopupFallback = ({ onClose }: { onClose: () => void }) => (
         </div>
         <h2 className="text-xl sm:text-2xl font-bold mb-3">Bienvenue sur MIPROJET</h2>
         <p className="text-white/90 text-sm sm:text-base leading-relaxed mb-6">
-          Plateforme panafricaine de structuration et d'orientation de projets. Transformez votre idée en projet crédible et prêt pour le financement.
+          Plateforme africaine de structuration et d'orientation de projets. Transformez votre idée en projet crédible et prêt pour le financement.
         </p>
         <div className="flex flex-col sm:flex-row gap-3">
           <Link to="/submit-project" className="flex-1" onClick={onClose}>

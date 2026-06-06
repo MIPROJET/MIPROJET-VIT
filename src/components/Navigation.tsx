@@ -59,7 +59,8 @@ export const Navigation = () => {
         { to: "/about", label: "Qui sommes-nous", emoji: "🏛️" },
         { to: "/how-it-works", label: "Comment ça marche", emoji: "⚙️" },
         { to: "/success-stories", label: "Témoignages", emoji: "🏆" },
-        { to: "/journey", label: "Notre parcours", emoji: "🛤️" },
+        { to: "/notre-parcours", label: "Notre parcours", emoji: "🛤️" },
+        { to: "/journey", label: "Mon parcours utilisateur", emoji: "🧭" },
       ],
     },
     {

@@ -17,7 +17,7 @@ import { useSEO } from "@/components/SEOHead";
 
 const Index = () => {
   useSEO({
-    title: "Plateforme Panafricaine de Structuration de Projets",
+    title: "Plateforme Africaine de Structuration de Projets",
     description: "MIPROJET accompagne les entrepreneurs et investisseurs africains dans la structuration, le financement et l'incubation de projets rentables en Côte d'Ivoire et en Afrique.",
     image: window.location.origin + "/favicon.png",
     url: window.location.origin,

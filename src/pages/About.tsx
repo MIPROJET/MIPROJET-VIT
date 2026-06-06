@@ -51,7 +51,7 @@ const values = [
   },
   {
     icon: Globe,
-    title: "Panafricanisme",
+    title: "Vision continentale",
     description: "Vision continentale pour un développement inclusif et durable"
   }
 ];
@@ -67,7 +67,7 @@ const team = [
   {
     name: "Dr Konan Marcel KOUASSI",
     role: "Fondateur & CEO",
-    description: "Fondateur et CEO de MIPROJET. Expert en structuration de projets avec une vision panafricaine.",
+    description: "Fondateur et CEO de MIPROJET. Expert en structuration de projets avec une vision continentale.",
     photo: founderPhoto,
   },
   {
@@ -92,8 +92,8 @@ const About = () => {
 
   useEffect(() => {
     setMeta(
-      "À propos | MIPROJET - Plateforme Panafricaine de Financement", 
-      "Découvrez MIPROJET, la plateforme panafricaine spécialisée dans la structuration professionnelle et l'accompagnement de projets à fort impact en Afrique."
+      "À propos | MIPROJET - Plateforme Africaine de Financement", 
+      "Découvrez MIPROJET, la plateforme africaine spécialisée dans la structuration professionnelle et l'accompagnement de projets à fort impact en Afrique."
     );
   }, []);
 
@@ -285,7 +285,7 @@ const About = () => {
                 <Globe className="h-8 w-8 text-accent" />
               </div>
               <h2 className="text-3xl md:text-4xl font-bold mb-6">
-                Présence Panafricaine
+                Présence en Afrique
               </h2>
               <p className="text-xl text-primary-foreground/90 mb-8">
                 Basés en Côte d'Ivoire, nous accompagnons des projets dans plus de 

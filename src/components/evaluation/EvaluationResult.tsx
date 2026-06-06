@@ -208,7 +208,7 @@ export const EvaluationResult = ({ evaluation, projectTitle, onClose }: Evaluati
         </div>
 
         <div class="footer">
-          <p><strong>MIPROJET</strong> - Plateforme Panafricaine de Structuration de Projets</p>
+          <p><strong>MIPROJET</strong> - Plateforme Africaine de Structuration de Projets</p>
           <p>Bingerville – Adjin Palmeraie, 25 BP 2454 ABIDJAN 25</p>
           <p>Ce document est un rapport officiel d'évaluation MIPROJET SCORE</p>
         </div>
