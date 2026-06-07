@@ -33,6 +33,7 @@ const menuGroups = [
       { id: "news", label: "Actualités", icon: Newspaper },
       { id: "documents", label: "Documents", icon: FileDown },
       { id: "faq", label: "FAQ", icon: HelpCircle },
+      { id: "testimonials", label: "Témoignages", icon: MessageSquareQuote },
     ],
   },
   {
