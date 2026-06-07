@@ -766,12 +766,15 @@ export type Database = {
           admin_notes: string | null
           certification_type: string | null
           certified_at: string | null
+          content_hash: string | null
           created_at: string
           expires_at: string | null
           id: string
           project_id: string
           report_url: string | null
           scoring_id: string | null
+          short_id: string | null
+          signed_payload: Json | null
           status: string | null
           updated_at: string
           user_id: string
@@ -780,12 +783,15 @@ export type Database = {
           admin_notes?: string | null
           certification_type?: string | null
           certified_at?: string | null
+          content_hash?: string | null
           created_at?: string
           expires_at?: string | null
           id?: string
           project_id: string
           report_url?: string | null
           scoring_id?: string | null
+          short_id?: string | null
+          signed_payload?: Json | null
           status?: string | null
           updated_at?: string
           user_id: string
@@ -794,12 +800,15 @@ export type Database = {
           admin_notes?: string | null
           certification_type?: string | null
           certified_at?: string | null
+          content_hash?: string | null
           created_at?: string
           expires_at?: string | null
           id?: string
           project_id?: string
           report_url?: string | null
           scoring_id?: string | null
+          short_id?: string | null
+          signed_payload?: Json | null
           status?: string | null
           updated_at?: string
           user_id?: string
@@ -830,6 +839,7 @@ export type Database = {
           description: string | null
           id: string
           project_id: string
+          receipt_path: string | null
           record_date: string
           record_type: string
           updated_at: string
@@ -843,6 +853,7 @@ export type Database = {
           description?: string | null
           id?: string
           project_id: string
+          receipt_path?: string | null
           record_date?: string
           record_type?: string
           updated_at?: string
@@ -856,6 +867,7 @@ export type Database = {
           description?: string | null
           id?: string
           project_id?: string
+          receipt_path?: string | null
           record_date?: string
           record_type?: string
           updated_at?: string
@@ -941,6 +953,7 @@ export type Database = {
           id: string
           legal_status: string | null
           monthly_expenses: number | null
+          publish_when_eligible: boolean
           sector: string | null
           status: string | null
           title: string
@@ -963,6 +976,7 @@ export type Database = {
           id?: string
           legal_status?: string | null
           monthly_expenses?: number | null
+          publish_when_eligible?: boolean
           sector?: string | null
           status?: string | null
           title: string
@@ -985,6 +999,7 @@ export type Database = {
           id?: string
           legal_status?: string | null
           monthly_expenses?: number | null
+          publish_when_eligible?: boolean
           sector?: string | null
           status?: string | null
           title?: string
@@ -1127,6 +1142,33 @@ export type Database = {
           tier?: Database["public"]["Enums"]["mp_plan_tier"]
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      mp_voice_usage: {
+        Row: {
+          count: number
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+          year_month: string
+        }
+        Insert: {
+          count?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+          year_month: string
+        }
+        Update: {
+          count?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+          year_month?: string
         }
         Relationships: []
       }
@@ -2165,6 +2207,48 @@ export type Database = {
           updated_at?: string | null
           view_count?: number
           views_count?: number | null
+        }
+        Relationships: []
+      }
+      testimonials: {
+        Row: {
+          avatar_url: string | null
+          content: string
+          country: string | null
+          created_at: string
+          id: string
+          name: string
+          published: boolean
+          rating: number | null
+          role: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          content: string
+          country?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          published?: boolean
+          rating?: number | null
+          role?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          content?: string
+          country?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          published?: boolean
+          rating?: number | null
+          role?: string | null
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }

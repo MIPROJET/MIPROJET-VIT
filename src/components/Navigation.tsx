@@ -60,7 +60,6 @@ export const Navigation = () => {
         { to: "/how-it-works", label: "Comment ça marche", emoji: "⚙️" },
         { to: "/success-stories", label: "Témoignages", emoji: "🏆" },
         { to: "/notre-parcours", label: "Notre parcours", emoji: "🛤️" },
-        { to: "/journey", label: "Mon parcours utilisateur", emoji: "🧭" },
       ],
     },
     {

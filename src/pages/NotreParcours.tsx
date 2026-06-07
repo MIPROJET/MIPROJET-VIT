@@ -27,15 +27,15 @@ type Milestone = {
 
 const milestones: Milestone[] = [
   {
-    date: "2024",
+    date: "2022",
     title: "Genèse — Mako Ivoire Projet SARL",
     description:
-      "Création de la société Mako Ivoire Projet (MIPROJET) par une équipe pluridisciplinaire d'ingénieurs en gestion de projets, en structuration d'entreprise et en développement informatique. Une réponse concrète à un constat partagé : l'Afrique ne manque pas d'idées, mais de structuration, de données fiables et de mécanismes de crédibilité.",
+      "C'est en 2022 que naît Mako Ivoire Projet (MIPROJET), portée par une équipe pluridisciplinaire d'ingénieurs en gestion de projets, en structuration d'entreprise et en développement informatique. Une réponse concrète à un constat partagé : l'Afrique ne manque pas d'idées, mais de structuration, de données fiables et de mécanismes de crédibilité.",
     icon: Building2,
     tone: "primary",
   },
   {
-    date: "Conférence de presse — 2025",
+    date: "Conférence de presse — 2023",
     title: "Lancement officiel de MIPROJET",
     description:
       "Présentation publique de la plateforme MIPROJET devant la presse et les acteurs de l'écosystème entrepreneurial ivoirien. Annonce de la mission : transformer les idées en projets crédibles, et les projets crédibles en opportunités de financement.",
@@ -59,7 +59,7 @@ const milestones: Milestone[] = [
     tone: "accent",
   },
   {
-    date: "2026",
+    date: "Juin 2026",
     title: "Représentation exclusive de dgMarket en Côte d'Ivoire",
     description:
       "Signature du Mémorandum d'Entente (MoU) avec dgMarket International (Washington D.C.), faisant de MIPROJET le représentant exclusif de dgMarket en Côte d'Ivoire. Accès direct à plus d'un million de notifications d'appels d'offres dans 180+ pays.",
@@ -141,7 +141,7 @@ const NotreParcours = () => {
             <div className="text-center mb-10">
               <h2 className="text-2xl md:text-3xl font-bold mb-3">Une équipe, quatre expertises</h2>
               <p className="text-muted-foreground max-w-2xl mx-auto">
-                MIPROJET n'est pas l'œuvre d'un seul homme : c'est le fruit d'une équipe complémentaire,
+                MIPROJET : c'est le fruit d'une équipe complémentaire,
                 au service des entrepreneurs et des organisations.
               </p>
             </div>
