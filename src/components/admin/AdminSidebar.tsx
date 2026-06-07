@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, FolderKanban, Settings, 
   FileText, BarChart3, Home, Newspaper,
   Receipt, CreditCard, HelpCircle, BookOpen, Crown, Briefcase, Mail, UserCheck,
-  ChevronDown, FileDown, Shield, Award, Sparkles
+  ChevronDown, FileDown, Shield, Award, Sparkles, MessageSquareQuote
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -33,6 +33,7 @@ const menuGroups = [
       { id: "news", label: "Actualités", icon: Newspaper },
       { id: "documents", label: "Documents", icon: FileDown },
       { id: "faq", label: "FAQ", icon: HelpCircle },
+      { id: "testimonials", label: "Témoignages", icon: MessageSquareQuote },
     ],
   },
   {
