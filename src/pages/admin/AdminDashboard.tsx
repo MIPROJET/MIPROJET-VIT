@@ -292,6 +292,10 @@ const AdminDashboard = () => {
             <TabsContent value="mp-certifications" className="space-y-6">
               <AdminMPCertificationsManager />
             </TabsContent>
+
+            <TabsContent value="testimonials" className="space-y-6">
+              <AdminTestimonialsManager />
+            </TabsContent>
           </Tabs>
         </main>
       </div>
