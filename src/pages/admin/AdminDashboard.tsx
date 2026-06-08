@@ -44,6 +44,7 @@ import { AdminMaintenanceManager } from "@/components/admin/AdminMaintenanceMana
 import { AdminTendersManager } from "@/components/admin/AdminTendersManager";
 import { AdminTenderLeadsManager } from "@/components/admin/AdminTenderLeadsManager";
 import { AdminTestimonialsManager } from "@/components/admin/AdminTestimonialsManager";
+import { AdminInvestorProspects } from "@/components/admin/AdminInvestorProspects";
 
 const AdminDashboard = () => {
   const { user, isAdmin, loading, adminChecked, signOut } = useAuth();
