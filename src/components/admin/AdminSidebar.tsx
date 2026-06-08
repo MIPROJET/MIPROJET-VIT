@@ -41,6 +41,7 @@ const menuGroups = [
     items: [
       { id: "users", label: "Utilisateurs", icon: Users },
       { id: "leads", label: "Leads & Contacts", icon: UserCheck },
+      { id: "investor-prospects", label: "Prospects investisseurs", icon: Heart },
       { id: "referrals", label: "Parrainages", icon: Users },
     ],
   },
