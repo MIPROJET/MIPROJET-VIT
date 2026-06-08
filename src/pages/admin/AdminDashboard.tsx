@@ -297,6 +297,10 @@ const AdminDashboard = () => {
             <TabsContent value="testimonials" className="space-y-6">
               <AdminTestimonialsManager />
             </TabsContent>
+
+            <TabsContent value="investor-prospects" className="space-y-6">
+              <AdminInvestorProspects />
+            </TabsContent>
           </Tabs>
         </main>
       </div>
