@@ -360,10 +360,11 @@ const ProjectDetail = () => {
         <section className="py-12">
           <div className="container mx-auto px-4">
             <Tabs defaultValue="description" className="max-w-4xl mx-auto">
-              <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
+              <TabsList className="grid w-full grid-cols-3 lg:grid-cols-7">
                 <TabsTrigger value="description">Description</TabsTrigger>
+                <TabsTrigger value="gallery">Galerie</TabsTrigger>
                 <TabsTrigger value="evaluation">Évaluation</TabsTrigger>
-                <TabsTrigger value="details">Données détaillées</TabsTrigger>
+                <TabsTrigger value="details">Données</TabsTrigger>
                 <TabsTrigger value="updates">Actualités</TabsTrigger>
                 <TabsTrigger value="team">Équipe</TabsTrigger>
                 <TabsTrigger value="documents">Documents</TabsTrigger>
@@ -376,6 +377,27 @@ const ProjectDetail = () => {
                   </CardContent>
                 </Card>
               </TabsContent>
+
+              <TabsContent value="gallery" className="mt-6">
+                {project.gallery_urls && project.gallery_urls.length > 0 ? (
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {project.gallery_urls.map((url, i) => (
+                      <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="relative aspect-[4/3] overflow-hidden rounded-lg group bg-muted">
+                        <img src={url} alt={`${project.title} — visuel ${i + 1}`} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                      </a>
+                    ))}
+                  </div>
+                ) : (
+                  <Card className="text-center py-8">
+                    <CardContent>
+                      <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">Aucun visuel disponible pour le moment.</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+
+
 
               {/* MODULE 8 — Évaluation avec interprétation auto */}
               <TabsContent value="evaluation" className="mt-6">
