@@ -18,6 +18,7 @@ import {
   ClipboardList, BarChart3, CheckCircle, AlertTriangle, ArrowRight
 } from "lucide-react";
 import { formatProjectDisplayId } from "@/lib/projectId";
+import { InvestorInterestDialog } from "@/components/projects/InvestorInterestDialog";
 import { interpretScore, getMaturityLevel, EVALUATION_AXES } from "@/lib/evaluation";
 
 interface Project {
