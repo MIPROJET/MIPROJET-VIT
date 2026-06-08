@@ -15,11 +15,12 @@ import { useToast } from "@/hooks/use-toast";
 import {
   MapPin, Calendar, Users, Target, TrendingUp, Share2, Heart,
   MessageCircle, FileText, Clock, Shield, Award, ArrowLeft, Hash,
-  ClipboardList, BarChart3, CheckCircle, AlertTriangle, ArrowRight
+  ClipboardList, BarChart3, CheckCircle, AlertTriangle, ArrowRight, Globe, Image as ImageIcon
 } from "lucide-react";
 import { formatProjectDisplayId } from "@/lib/projectId";
 import { InvestorInterestDialog } from "@/components/projects/InvestorInterestDialog";
 import { interpretScore, getMaturityLevel, EVALUATION_AXES } from "@/lib/evaluation";
+import { ScoreBadge } from "@/components/projects/ScoreBadge";
 
 interface Project {
   id: string;
@@ -39,6 +40,16 @@ interface Project {
   fonds_disponibles?: string | null;
   documents?: any;
   image_url?: string | null;
+  logo_url?: string | null;
+  cover_url?: string | null;
+  public_summary?: string | null;
+  expected_roi?: number | null;
+  amount_requested?: number | null;
+  currency?: string | null;
+  mp_score?: number | null;
+  recommendation_level?: string | null;
+  website_url?: string | null;
+  gallery_urls?: string[] | null;
 }
 
 interface Evaluation {
