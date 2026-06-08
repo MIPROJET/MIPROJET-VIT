@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, TrendingUp, Award, ArrowUpRight, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
+import { ScoreBadge } from "@/components/projects/ScoreBadge";
 
 export interface PublicProject {
   id: string;
@@ -31,13 +32,6 @@ const formatAmount = (n?: number | null, currency = "XOF") => {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)} M ${currency}`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(0)} k ${currency}`;
   return `${n} ${currency}`;
-};
-
-const scoreBadge = (score?: number | null) => {
-  if (score == null) return null;
-  if (score >= 80) return { label: `Finançable · ${Math.round(score)}/100`, cls: "bg-success text-white" };
-  if (score >= 60) return { label: `Solide · ${Math.round(score)}/100`, cls: "bg-info text-white" };
-  return { label: `${Math.round(score)}/100`, cls: "bg-muted text-foreground" };
 };
 
 export const PublicProjectCard = ({ project }: { project: PublicProject }) => {
