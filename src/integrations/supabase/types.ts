@@ -936,12 +936,56 @@ export type Database = {
           },
         ]
       }
+      mp_project_media: {
+        Row: {
+          caption: string | null
+          created_at: string
+          id: string
+          kind: string
+          project_id: string
+          storage_path: string
+          taken_at: string | null
+          user_id: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          project_id: string
+          storage_path: string
+          taken_at?: string | null
+          user_id: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          project_id?: string
+          storage_path?: string
+          taken_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mp_project_media_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "mp_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mp_projects: {
         Row: {
           activity_type: string | null
           annual_revenue: number | null
           city: string | null
+          commercialization: string | null
+          complexity_level: string
           country: string | null
+          cover_url: string | null
           created_at: string
           creation_date: string | null
           description: string | null
@@ -951,11 +995,20 @@ export type Database = {
           has_bank_account: boolean | null
           has_business_plan: boolean | null
           id: string
+          is_public: boolean
+          journey: string
           legal_status: string | null
+          logo_url: string | null
+          monitoring_evaluation: string | null
           monthly_expenses: number | null
+          product_description: string | null
+          profile_kind: string
+          project_type: string | null
           publish_when_eligible: boolean
           sector: string | null
+          short_pitch: string | null
           status: string | null
+          target_customers: string | null
           title: string
           updated_at: string
           user_id: string
@@ -964,7 +1017,10 @@ export type Database = {
           activity_type?: string | null
           annual_revenue?: number | null
           city?: string | null
+          commercialization?: string | null
+          complexity_level?: string
           country?: string | null
+          cover_url?: string | null
           created_at?: string
           creation_date?: string | null
           description?: string | null
@@ -974,11 +1030,20 @@ export type Database = {
           has_bank_account?: boolean | null
           has_business_plan?: boolean | null
           id?: string
+          is_public?: boolean
+          journey?: string
           legal_status?: string | null
+          logo_url?: string | null
+          monitoring_evaluation?: string | null
           monthly_expenses?: number | null
+          product_description?: string | null
+          profile_kind?: string
+          project_type?: string | null
           publish_when_eligible?: boolean
           sector?: string | null
+          short_pitch?: string | null
           status?: string | null
+          target_customers?: string | null
           title: string
           updated_at?: string
           user_id: string
@@ -987,7 +1052,10 @@ export type Database = {
           activity_type?: string | null
           annual_revenue?: number | null
           city?: string | null
+          commercialization?: string | null
+          complexity_level?: string
           country?: string | null
+          cover_url?: string | null
           created_at?: string
           creation_date?: string | null
           description?: string | null
@@ -997,11 +1065,20 @@ export type Database = {
           has_bank_account?: boolean | null
           has_business_plan?: boolean | null
           id?: string
+          is_public?: boolean
+          journey?: string
           legal_status?: string | null
+          logo_url?: string | null
+          monitoring_evaluation?: string | null
           monthly_expenses?: number | null
+          product_description?: string | null
+          profile_kind?: string
+          project_type?: string | null
           publish_when_eligible?: boolean
           sector?: string | null
+          short_pitch?: string | null
           status?: string | null
+          target_customers?: string | null
           title?: string
           updated_at?: string
           user_id?: string
@@ -1079,6 +1156,7 @@ export type Database = {
       mp_support_tickets: {
         Row: {
           admin_response: string | null
+          attachments: Json
           category: string
           created_at: string
           id: string
@@ -1092,6 +1170,7 @@ export type Database = {
         }
         Insert: {
           admin_response?: string | null
+          attachments?: Json
           category?: string
           created_at?: string
           id?: string
@@ -1105,6 +1184,7 @@ export type Database = {
         }
         Update: {
           admin_response?: string | null
+          attachments?: Json
           category?: string
           created_at?: string
           id?: string
@@ -2485,6 +2565,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_agricapital_partition: { Args: never; Returns: Json }
       get_opportunity_contacts: {
         Args: { p_id: string }
         Returns: {
