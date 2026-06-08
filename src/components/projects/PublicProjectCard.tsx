@@ -44,41 +44,8 @@ export const PublicProjectCard = ({ project }: { project: PublicProject }) => {
     }. Opportunité d'investissement structurée selon les standards MIPROJET.`;
 
   const amount = formatAmount(project.amount_requested, project.currency || "XOF");
-  const score = scoreBadge(project.mp_score);
   const link = `/projects/${project.id}`;
 
-  return (
-    <Card className="group overflow-hidden h-full flex flex-col hover:shadow-glow transition-all duration-300 hover:-translate-y-1 border-border/60">
-      {/* Cover */}
-      <Link to={link} className="relative block h-44 sm:h-48 overflow-hidden bg-gradient-to-br from-primary/10 to-secondary/10">
-        {cover ? (
-          <img
-            src={cover}
-            alt={project.title}
-            loading="lazy"
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Sparkles className="h-14 w-14 text-primary/30" />
-          </div>
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-
-        {/* Logo */}
-        {project.logo_url && (
-          <div className="absolute bottom-3 left-3 h-12 w-12 rounded-lg bg-white shadow-lg p-1 ring-2 ring-white">
-            <img src={project.logo_url} alt="" className="h-full w-full object-contain" />
-          </div>
-        )}
-
-        {/* Badges */}
-        <div className="absolute top-3 left-3 flex flex-wrap gap-2">
-          {project.sector && (
-            <Badge className="bg-primary/95 text-primary-foreground backdrop-blur-sm">{project.sector}</Badge>
-          )}
-          {score && <Badge className={`${score.cls} backdrop-blur-sm`}>{score.label}</Badge>}
-        </div>
 
         {project.recommendation_level === "elite" && (
           <Badge className="absolute top-3 right-3 bg-amber-500 text-white">
