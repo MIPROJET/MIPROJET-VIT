@@ -262,11 +262,8 @@ const ProjectDetail = () => {
                   </span>
                 </div>
 
-                <div className="flex gap-3">
-                  <Button variant="premium" size="lg" onClick={handleInvest}>
-                    <Target className="mr-2 h-5 w-5" />
-                    {t('projects.invest') || "Investir"}
-                  </Button>
+                <div className="flex flex-wrap gap-3">
+                  <InvestorInterestDialog projectId={project.id} projectTitle={project.title} />
                   <Button variant="outline" size="lg" className="bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground">
                     <Share2 className="mr-2 h-4 w-4" />
                     {t('common.share') || "Partager"}
