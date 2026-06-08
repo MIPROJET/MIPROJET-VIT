@@ -258,18 +258,26 @@ const Projects = () => {
               </div>
             ) : (
               <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-                {filteredProjects.map((project) => (
-                  <ProjectCard
+                {filteredProjects.map((project: any) => (
+                  <PublicProjectCard
                     key={project.id}
-                    id={project.id}
-                    title={project.title}
-                    description={project.description || ""}
-                    category={project.category || "Autre"}
-                    location={`${project.city || ''}, ${project.country || 'Afrique'}`}
-                    fundingType={project.sector || "Investissement en capital"}
-                    status={getProjectStatus(project)}
-                    score={(project.risk_score as "A" | "B" | "C" | "D") || "B"}
-                    image={project.image_url || `https://images.unsplash.com/photo-1542831371-29b0f74f9713?w=600&h=400&fit=crop`}
+                    project={{
+                      id: project.id,
+                      title: project.title,
+                      sector: project.sector || project.category,
+                      country: project.country,
+                      city: project.city,
+                      amount_requested: project.amount_requested ?? project.funding_goal,
+                      currency: project.currency || "XOF",
+                      logo_url: project.logo_url,
+                      cover_url: project.cover_url,
+                      image_url: project.image_url,
+                      public_summary: project.public_summary,
+                      description: project.description,
+                      expected_roi: project.expected_roi,
+                      mp_score: project.mp_score,
+                      recommendation_level: project.recommendation_level,
+                    }}
                   />
                 ))}
               </div>
