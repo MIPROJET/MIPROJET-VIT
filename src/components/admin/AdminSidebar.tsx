@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, FolderKanban, Settings, 
   FileText, BarChart3, Home, Newspaper,
   Receipt, CreditCard, HelpCircle, BookOpen, Crown, Briefcase, Mail, UserCheck,
-  ChevronDown, FileDown, Shield, Award, Sparkles, MessageSquareQuote
+  ChevronDown, FileDown, Shield, Award, Sparkles, MessageSquareQuote, Heart
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
