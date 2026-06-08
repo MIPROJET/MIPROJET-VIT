@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, TrendingUp, Award, ArrowUpRight, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
+import { ScoreBadge } from "@/components/projects/ScoreBadge";
 
 export interface PublicProject {
   id: string;
@@ -33,13 +34,6 @@ const formatAmount = (n?: number | null, currency = "XOF") => {
   return `${n} ${currency}`;
 };
 
-const scoreBadge = (score?: number | null) => {
-  if (score == null) return null;
-  if (score >= 80) return { label: `Finançable · ${Math.round(score)}/100`, cls: "bg-success text-white" };
-  if (score >= 60) return { label: `Solide · ${Math.round(score)}/100`, cls: "bg-info text-white" };
-  return { label: `${Math.round(score)}/100`, cls: "bg-muted text-foreground" };
-};
-
 export const PublicProjectCard = ({ project }: { project: PublicProject }) => {
   const cover = project.cover_url || project.image_url || project.logo_url;
   const summary =
@@ -50,12 +44,10 @@ export const PublicProjectCard = ({ project }: { project: PublicProject }) => {
     }. Opportunité d'investissement structurée selon les standards MIPROJET.`;
 
   const amount = formatAmount(project.amount_requested, project.currency || "XOF");
-  const score = scoreBadge(project.mp_score);
   const link = `/projects/${project.id}`;
 
   return (
     <Card className="group overflow-hidden h-full flex flex-col hover:shadow-glow transition-all duration-300 hover:-translate-y-1 border-border/60">
-      {/* Cover */}
       <Link to={link} className="relative block h-44 sm:h-48 overflow-hidden bg-gradient-to-br from-primary/10 to-secondary/10">
         {cover ? (
           <img
@@ -69,29 +61,33 @@ export const PublicProjectCard = ({ project }: { project: PublicProject }) => {
             <Sparkles className="h-14 w-14 text-primary/30" />
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
 
-        {/* Logo */}
         {project.logo_url && (
           <div className="absolute bottom-3 left-3 h-12 w-12 rounded-lg bg-white shadow-lg p-1 ring-2 ring-white">
             <img src={project.logo_url} alt="" className="h-full w-full object-contain" />
           </div>
         )}
 
-        {/* Badges */}
         <div className="absolute top-3 left-3 flex flex-wrap gap-2">
           {project.sector && (
             <Badge className="bg-primary/95 text-primary-foreground backdrop-blur-sm">{project.sector}</Badge>
           )}
-          {score && <Badge className={`${score.cls} backdrop-blur-sm`}>{score.label}</Badge>}
         </div>
 
+        {project.mp_score != null && (
+          <div className="absolute top-3 right-3">
+            <ScoreBadge score={project.mp_score} size="sm" showLabel />
+          </div>
+        )}
+
         {project.recommendation_level === "elite" && (
-          <Badge className="absolute top-3 right-3 bg-amber-500 text-white">
+          <Badge className="absolute bottom-3 right-3 bg-amber-500 text-white">
             <Award className="h-3 w-3 mr-1" /> Recommandé
           </Badge>
         )}
       </Link>
+
 
       <CardContent className="flex-1 flex flex-col gap-3 p-4">
         <Link to={link}>

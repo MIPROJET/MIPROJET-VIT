@@ -15,11 +15,12 @@ import { useToast } from "@/hooks/use-toast";
 import {
   MapPin, Calendar, Users, Target, TrendingUp, Share2, Heart,
   MessageCircle, FileText, Clock, Shield, Award, ArrowLeft, Hash,
-  ClipboardList, BarChart3, CheckCircle, AlertTriangle, ArrowRight
+  ClipboardList, BarChart3, CheckCircle, AlertTriangle, ArrowRight, Globe, Image as ImageIcon
 } from "lucide-react";
 import { formatProjectDisplayId } from "@/lib/projectId";
 import { InvestorInterestDialog } from "@/components/projects/InvestorInterestDialog";
 import { interpretScore, getMaturityLevel, EVALUATION_AXES } from "@/lib/evaluation";
+import { ScoreBadge } from "@/components/projects/ScoreBadge";
 
 interface Project {
   id: string;
@@ -39,6 +40,16 @@ interface Project {
   fonds_disponibles?: string | null;
   documents?: any;
   image_url?: string | null;
+  logo_url?: string | null;
+  cover_url?: string | null;
+  public_summary?: string | null;
+  expected_roi?: number | null;
+  amount_requested?: number | null;
+  currency?: string | null;
+  mp_score?: number | null;
+  recommendation_level?: string | null;
+  website_url?: string | null;
+  gallery_urls?: string[] | null;
 }
 
 interface Evaluation {
@@ -233,16 +244,21 @@ const ProjectDetail = () => {
             
             <div className="grid lg:grid-cols-2 gap-8">
               <div>
-                <div className="flex flex-wrap gap-2 mb-4">
+                <div className="flex flex-wrap gap-2 mb-4 items-center">
+                  {project.logo_url && (
+                    <div className="h-14 w-14 rounded-xl bg-white p-1.5 ring-2 ring-white/40 shadow-lg mr-1">
+                      <img src={project.logo_url} alt={project.title} className="h-full w-full object-contain" />
+                    </div>
+                  )}
                   <Badge variant="secondary" className="font-mono">
                     <Hash className="h-3 w-3 mr-1" />
                     {formatProjectDisplayId(project.display_id, project.id)}
                   </Badge>
-                  {project.category && <Badge variant="secondary">{project.category}</Badge>}
-                  {project.risk_score && (
-                    <Badge className={riskColors[project.risk_score] || 'bg-muted'}>
-                      Score: {project.risk_score}
-                    </Badge>
+                  {(project.sector || project.category) && (
+                    <Badge variant="secondary">{project.sector || project.category}</Badge>
+                  )}
+                  {project.mp_score != null && (
+                    <ScoreBadge score={project.mp_score} size="md" />
                   )}
                   <Badge variant="outline" className="text-primary-foreground border-primary-foreground/30">
                     <Shield className="h-3 w-3 mr-1" />
@@ -252,40 +268,67 @@ const ProjectDetail = () => {
                 
                 <h1 className="text-4xl font-bold text-primary-foreground mb-4">{project.title}</h1>
                 
-                <div className="flex items-center gap-4 text-primary-foreground/80 mb-6">
-                  <span className="flex items-center gap-1">
-                    <MapPin className="h-4 w-4" />
-                    {project.city}, {project.country}
-                  </span>
+                <p className="text-primary-foreground/90 text-lg mb-4 max-w-2xl">
+                  {project.public_summary || project.description?.slice(0, 220)}
+                </p>
+
+                <div className="flex items-center gap-4 text-primary-foreground/80 mb-6 flex-wrap text-sm">
+                  {(project.city || project.country) && (
+                    <span className="flex items-center gap-1">
+                      <MapPin className="h-4 w-4" />
+                      {[project.city, project.country].filter(Boolean).join(", ")}
+                    </span>
+                  )}
                   <span className="flex items-center gap-1">
                     <Calendar className="h-4 w-4" />
                     {new Date(project.created_at).toLocaleDateString()}
                   </span>
+                  {project.expected_roi != null && (
+                    <span className="flex items-center gap-1">
+                      <TrendingUp className="h-4 w-4" /> ROI ~{project.expected_roi}%
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex flex-wrap gap-3">
                   <InvestorInterestDialog projectId={project.id} projectTitle={project.title} />
+                  {project.website_url && (
+                    <Button asChild variant="outline" size="lg" className="bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/20">
+                      <a href={project.website_url} target="_blank" rel="noopener noreferrer">
+                        <Globe className="mr-2 h-4 w-4" />
+                        Site officiel
+                      </a>
+                    </Button>
+                  )}
                   <Button variant="outline" size="lg" className="bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground">
                     <Share2 className="mr-2 h-4 w-4" />
                     {t('common.share') || "Partager"}
                   </Button>
-                  <Button variant="ghost" size="icon" className="text-primary-foreground">
-                    <Heart className="h-5 w-5" />
-                  </Button>
                 </div>
               </div>
 
-              {/* Funding Card */}
-              <Card className="bg-card/95 backdrop-blur">
-                <CardContent className="pt-6">
-                  <div className="text-center mb-6">
-                    <p className="text-4xl font-bold text-primary">
-                      {project.funds_raised.toLocaleString()} FCFA
-                    </p>
-                    <p className="text-muted-foreground">
-                      {t('projects.raised') || "collectés"} sur {project.funding_goal.toLocaleString()} FCFA
-                    </p>
+              {/* Cover / Funding Card */}
+              <Card className="bg-card/95 backdrop-blur overflow-hidden">
+                {(project.cover_url || project.image_url) && (
+                  <div className="h-48 w-full overflow-hidden">
+                    <img src={project.cover_url || project.image_url!} alt={project.title} className="w-full h-full object-cover" />
                   </div>
+                )}
+                <CardContent className="pt-6">
+                  {project.amount_requested != null ? (
+                    <div className="text-center mb-6">
+                      <p className="text-4xl font-bold text-primary">
+                        {Number(project.amount_requested).toLocaleString()} {project.currency || "FCFA"}
+                      </p>
+                      <p className="text-muted-foreground">Montant recherché</p>
+                    </div>
+                  ) : (
+                    <div className="text-center mb-6">
+                      <p className="text-2xl font-bold text-primary">Sur demande</p>
+                      <p className="text-muted-foreground">Montant communiqué aux investisseurs qualifiés</p>
+                    </div>
+                  )}
+
 
                   <Progress value={progressPercent} className="h-3 mb-4" />
 
@@ -317,10 +360,11 @@ const ProjectDetail = () => {
         <section className="py-12">
           <div className="container mx-auto px-4">
             <Tabs defaultValue="description" className="max-w-4xl mx-auto">
-              <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
+              <TabsList className="grid w-full grid-cols-3 lg:grid-cols-7">
                 <TabsTrigger value="description">Description</TabsTrigger>
+                <TabsTrigger value="gallery">Galerie</TabsTrigger>
                 <TabsTrigger value="evaluation">Évaluation</TabsTrigger>
-                <TabsTrigger value="details">Données détaillées</TabsTrigger>
+                <TabsTrigger value="details">Données</TabsTrigger>
                 <TabsTrigger value="updates">Actualités</TabsTrigger>
                 <TabsTrigger value="team">Équipe</TabsTrigger>
                 <TabsTrigger value="documents">Documents</TabsTrigger>
@@ -333,6 +377,27 @@ const ProjectDetail = () => {
                   </CardContent>
                 </Card>
               </TabsContent>
+
+              <TabsContent value="gallery" className="mt-6">
+                {project.gallery_urls && project.gallery_urls.length > 0 ? (
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {project.gallery_urls.map((url, i) => (
+                      <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="relative aspect-[4/3] overflow-hidden rounded-lg group bg-muted">
+                        <img src={url} alt={`${project.title} — visuel ${i + 1}`} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                      </a>
+                    ))}
+                  </div>
+                ) : (
+                  <Card className="text-center py-8">
+                    <CardContent>
+                      <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">Aucun visuel disponible pour le moment.</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+
+
 
               {/* MODULE 8 — Évaluation avec interprétation auto */}
               <TabsContent value="evaluation" className="mt-6">
