@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
-import { ProjectCard } from "@/components/ProjectCard";
+import { PublicProjectCard } from "@/components/projects/PublicProjectCard";
 import { ProjectFilters } from "@/components/projects/ProjectFilters";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/i18n/LanguageContext";
