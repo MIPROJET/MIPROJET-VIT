@@ -15,6 +15,27 @@ Deno.serve(async (req) => {
     if (!userId) return jsonErr("userId required", 400);
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+    // Auth: caller must be the target user, an admin, or service-role
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    let authorized = token && token === serviceRoleKey;
+    if (!authorized && token) {
+      const { data: userData, error: userErr } = await supabase.auth.getUser(token);
+      if (!userErr && userData?.user) {
+        if (userData.user.id === userId) {
+          authorized = true;
+        } else {
+          const { data: roleRow } = await supabase
+            .from("user_roles").select("id")
+            .eq("user_id", userData.user.id).eq("role", "admin").maybeSingle();
+          authorized = !!roleRow;
+        }
+      }
+    }
+    if (!authorized) return jsonErr("Unauthorized", 401);
+
     const { data: profile } = await supabase
       .from("profiles").select("email, first_name").eq("id", userId).maybeSingle();
     if (!profile?.email) return jsonErr("Profile email not found", 404);
