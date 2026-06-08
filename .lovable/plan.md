@@ -1,103 +1,237 @@
-# Plan — Refonte MIPROJET inspirée Belife + sécurité + mailing pro
 
-Travail très large : je propose de livrer en **vagues** courtes pour que vous voyiez du concret rapidement, dans l'ordre exact de votre demande (refonte EN PRIORITÉ).
-
----
-
-## 🎨 VAGUE 1 — Refonte globale style Belife (PRIORITÉ ABSOLUE)
-
-### 1.1 Charte graphique stricte sur le logo MiProjet
-Couleurs extraites du logo :
-- **Bleu MiProjet** `#1B6FB5` (le "M" et "PROJET")
-- **Vert MiProjet** `#5BA84A` (le tiret + "Entrepreneuriat jeune")
-- **Bleu foncé navy** `#0F4C81` pour profondeur
-- Blanc / gris très clair pour fond
-- Refonte complète de `src/index.css` (tokens HSL/oklch cohérents, gradients bleu→vert, ombres douces)
-
-### 1.2 Navigation style Belife (voir capture jointe)
-- **Top bar fine** orange/accent : "Particuliers · Professionnels · Investisseurs" + "Agences & contact" + icônes sociales à droite
-- **Barre principale blanche aérée** : Logo gauche · Menus centrés (À propos, Nos offres, Opportunités, Actualités, Contact) avec dropdowns au survol · à droite : recherche 🔍 + **bouton "MiProjet+" détaché** (pill arrondi gradient vert→bleu) + icône téléphone
-- Menus dropdowns larges (mega-menu) avec colonnes thématiques
-- Mobile : drawer plein écran clean
-- Sticky avec rétrécissement au scroll
-
-### 1.3 Hero carousel automatique
-- Hero plein écran avec **carousel auto-défilant** (5s) des Actualités + Opportunités
-- Filtrage selon abonnement (public / Premium / Elite)
-- Flèches gauche/droite manuelles + dots indicateurs
-- Chaque slide : image cover + badge type (Actualité / Opportunité) + titre + extrait + CTA "Découvrir"
-- Animations fluides (framer-motion)
-
-### 1.4 Refonte de TOUTES les pages publiques
-Sections home : Hero carousel → Stats → Services → Comment ça marche → Types de financement → Projets en vedette → Témoignages → Actualités → CTA → Footer
-Pages refondues : Accueil, About, Services, Projects, Opportunities, News, Blog, Contact, FAQ, Documents, Subscription, Auth, Dashboard, MiProjet+, Admin (toutes), formulaires (StructuringForm, EnterpriseForm, Submit, Evaluation)
-
-### 1.5 Responsive parfait
-Audit mobile (375px), tablette (768px), desktop (1280px+) sur chaque page. Containers, paddings, breakpoints sm/md/lg/xl/2xl cohérents. Suppression de tout débordement horizontal.
+## Livré dans cette réponse
+- Page d'administration **Témoignages** (CRUD + publier/dépublier) ajoutée dans Admin → Gestion de contenu → Témoignages. Connectée à la table `testimonials` existante.
 
 ---
 
-## 🔐 VAGUE 2 — Sécurité
+## LOT 1 — Affichage public des projets (priorité absolue)
 
-- **Leaked Password Protection** : action manuelle dashboard Supabase (je documenterai dans un encart admin)
-- **opportunities.contact_email/phone** : déjà restreint aux `authenticated` (vérification + test)
-- **email_events INSERT** : ajouter policy explicite "service_role only" pour bloquer tout client
-- **Page admin "Sécurité"** : nouvelle entrée avec checklist (open / fixed / re-test), lien vers fix, statut live depuis `security--get_scan_results`
+### Objectifs
+1. Une grille moderne et dynamique des projets (publique + investisseurs + bailleurs).
+2. Page détail projet "vitrine" : résumé auto-généré, KPI, logo + image de couverture, montant, score MiProjet+, recommandation.
+3. Bouton **"Ce projet m'intéresse"** → formulaire prospect investisseur (capacité, type d'engagement, retour souhaité…) → table dédiée + notification admin.
+4. Auto-publication des projets MiProjet+ qui atteignent le niveau **Finançable** (déjà partiellement câblé via `mp_auto_publish_eligible_project`), avec récupération automatique du logo, photo, score, secteur, montant pour affichage immédiat (cas Agricapital).
 
-## 📧 VAGUE 3 — Mailing pro
+### Composants front à créer/refondre
+- `src/components/projects/PublicProjectCard.tsx` — carte moderne (logo + cover + score badge + montant + secteur + pays + CTA).
+- `src/components/projects/PublicProjectGrid.tsx` — grille responsive avec filtres (secteur, montant, score, type d'engagement).
+- `src/pages/PublicProjectDetail.tsx` (ou refonte `ProjectDetail.tsx` pour visiteur non-propriétaire) : hero, résumé IA, chiffres clés (montant demandé, capacité de remboursement, ROI estimé, durée), score MiProjet+ + recommandation, équipe (anonymisée), CTA.
+- `src/components/projects/InvestorInterestDialog.tsx` — formulaire :
+  - capacité d'investissement (tranche),
+  - type souhaité (capital, prêt, don, amorçage, mixte),
+  - retour attendu (%),
+  - souhait actionnariat (oui/non + %),
+  - horizon temps,
+  - message libre,
+  - coordonnées (pré-remplies si connecté).
+- Hook `useAutoSummary(project)` : génère un résumé pertinent (champs présents + niveau MiProjet+) sans exposer données sensibles.
 
-### 3.1 Monitoring temps réel
-Page `AdminEmailMonitoring` : quotas Brevo/Resend, taux ouverture/clic/bounce, échecs avec bouton "renvoyer", stats par segment, polling 15s.
+### Côté admin
+- `AdminProjectsTable` : ajouter colonne "Visible public" + toggle, bouton "Publier maintenant" et affichage du score MiProjet+ lié.
+- Nouveau tab admin **"Prospects investisseurs"** listant les soumissions du formulaire d'intérêt (statut, contact, projet visé).
 
-### 3.2 Webhooks dashboard
-Page dédiée events bruts Resend (+ Brevo si dispo) avec correspondance `email_logs`.
+### SQL à exécuter manuellement (LOT 1)
+```sql
+-- 1) Champs vitrine sur projects (si absents)
+ALTER TABLE public.projects
+  ADD COLUMN IF NOT EXISTS logo_url text,
+  ADD COLUMN IF NOT EXISTS cover_url text,
+  ADD COLUMN IF NOT EXISTS public_summary text,
+  ADD COLUMN IF NOT EXISTS expected_roi numeric,
+  ADD COLUMN IF NOT EXISTS repayment_capacity text,
+  ADD COLUMN IF NOT EXISTS funding_types text[] DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS recommendation_level text DEFAULT 'standard',
+  ADD COLUMN IF NOT EXISTS is_public boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS mp_score numeric,
+  ADD COLUMN IF NOT EXISTS country text,
+  ADD COLUMN IF NOT EXISTS city text;
 
-### 3.3 Éditeur WYSIWYG TipTap
-Remplace HTML brut. Toolbar complète + upload images bucket `email-assets` + insertion CTA + preview desktop/mobile + génération IA initiale.
+-- 2) Vue publique sécurisée (sans contacts ni données sensibles)
+CREATE OR REPLACE VIEW public.public_projects AS
+SELECT
+  p.id, p.display_id, p.short_slug, p.title, p.sector, p.country, p.city,
+  p.amount_requested, p.currency, p.logo_url, p.cover_url, p.public_summary,
+  p.expected_roi, p.repayment_capacity, p.funding_types,
+  p.recommendation_level, p.mp_score, p.status, p.created_at
+FROM public.projects p
+WHERE p.is_public = true AND p.status IN ('published','validated','oriented');
 
-### 3.4 Automatisations cron (pg_cron + pg_net)
-- Cron quotidien : abonnements expirant 7j → email rappel
-- Cron quotidien : nouvelles opportunités du jour groupées par segment
-- Cron horaire : retry échecs (max 3 tentatives, backoff)
-- Newsletter planifiée (date/heure choisie dans hub admin)
+GRANT SELECT ON public.public_projects TO anon, authenticated;
 
----
+-- 3) Table prospects investisseurs (formulaire "Ce projet m'intéresse")
+CREATE TABLE IF NOT EXISTS public.investor_prospects (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id uuid NOT NULL,
+  user_id uuid,
+  full_name text NOT NULL,
+  email text NOT NULL,
+  phone text,
+  country text,
+  investment_capacity text,
+  engagement_type text[] DEFAULT '{}', -- equity, loan, donation, seed, mixed
+  expected_return_pct numeric,
+  wants_equity boolean DEFAULT false,
+  equity_share_pct numeric,
+  time_horizon text,
+  message text,
+  status text DEFAULT 'new',
+  admin_notes text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
 
-## 📋 Détails techniques
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.investor_prospects TO authenticated;
+GRANT INSERT ON public.investor_prospects TO anon;
+GRANT ALL ON public.investor_prospects TO service_role;
 
-```text
-Fichiers refondus (Vague 1 — non exhaustif) :
-  src/index.css                            ← tokens MiProjet stricts
-  src/components/Navigation.tsx            ← style Belife (top bar + menu aéré + MP+ détaché)
-  src/components/Hero.tsx                  ← carousel actu/oppo
-  src/components/HeroCarousel.tsx          ← nouveau
-  src/components/Footer.tsx                ← refonte
-  src/components/Features|Services|...     ← refonte
-  src/pages/*                              ← audit + ajustements
-  src/components/admin/*                   ← refonte UI
-  src/pages/miprojet-plus/*                ← refonte UI
+ALTER TABLE public.investor_prospects ENABLE ROW LEVEL SECURITY;
 
-Vague 2 :
-  supabase/migrations/...                  ← email_events policy
-  src/components/admin/AdminSecurityCheck.tsx ← nouveau
+CREATE POLICY "Anyone can submit interest"
+  ON public.investor_prospects FOR INSERT
+  TO anon, authenticated
+  WITH CHECK (
+    email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'
+    AND char_length(full_name) BETWEEN 2 AND 120
+  );
 
-Vague 3 :
-  src/components/admin/EmailMonitoringDashboard.tsx
-  src/components/admin/EmailWebhooksDashboard.tsx
-  src/components/admin/EmailVisualEditor.tsx (TipTap)
-  supabase/migrations/...                  ← cron jobs + bucket email-assets
-  bun add @tiptap/react @tiptap/starter-kit @tiptap/extension-image @tiptap/extension-link
+CREATE POLICY "Owner sees own submissions"
+  ON public.investor_prospects FOR SELECT
+  TO authenticated
+  USING (auth.uid() = user_id OR public.has_role(auth.uid(), 'admin'));
+
+CREATE POLICY "Admins manage prospects"
+  ON public.investor_prospects FOR ALL
+  TO authenticated
+  USING (public.has_role(auth.uid(), 'admin'))
+  WITH CHECK (public.has_role(auth.uid(), 'admin'));
+
+CREATE TRIGGER trg_investor_prospects_updated_at
+  BEFORE UPDATE ON public.investor_prospects
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+-- 4) Mise à jour de la fonction d'auto-publication MiProjet+
+-- pour synchroniser logo, cover, score, summary depuis mp_projects
+CREATE OR REPLACE FUNCTION public.mp_auto_publish_eligible_project()
+RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_project public.mp_projects%ROWTYPE;
+  v_existing_id uuid;
+BEGIN
+  IF NEW.level IS DISTINCT FROM 'Finançable' THEN RETURN NEW; END IF;
+  SELECT * INTO v_project FROM public.mp_projects WHERE id = NEW.project_id;
+  IF NOT FOUND OR COALESCE(v_project.publish_when_eligible, false) = false THEN RETURN NEW; END IF;
+
+  SELECT id INTO v_existing_id FROM public.projects
+  WHERE owner_id = v_project.user_id AND metadata->>'mp_project_id' = v_project.id::text LIMIT 1;
+
+  IF v_existing_id IS NULL THEN
+    INSERT INTO public.projects
+      (owner_id, title, sector, amount_requested, status, source, is_public, mp_score, country, city, metadata)
+    VALUES (
+      v_project.user_id,
+      COALESCE(v_project.title, 'Projet MiProjet+'),
+      v_project.sector, v_project.amount_needed,
+      'published', 'miprojet', true,
+      NEW.score_global, v_project.country, v_project.city,
+      jsonb_build_object('mp_project_id', v_project.id, 'mp_score', NEW.score_global)
+    );
+  ELSE
+    UPDATE public.projects
+    SET title = COALESCE(v_project.title, title),
+        sector = COALESCE(v_project.sector, sector),
+        amount_requested = COALESCE(v_project.amount_needed, amount_requested),
+        status = 'published', is_public = true,
+        mp_score = NEW.score_global,
+        country = COALESCE(v_project.country, country),
+        city = COALESCE(v_project.city, city),
+        metadata = COALESCE(metadata,'{}'::jsonb) || jsonb_build_object('mp_project_id', v_project.id, 'mp_score', NEW.score_global),
+        updated_at = now()
+    WHERE id = v_existing_id;
+  END IF;
+  RETURN NEW;
+END $$;
 ```
 
 ---
 
-## 🚀 Ordre d'exécution
+## LOT 2 — Refonte profils entités (entreprise, startup, ONG, coopérative, association)
 
-1. **Vague 1.1 + 1.2 + 1.3** (tokens + nav Belife + hero carousel) — livrable visible immédiat
-2. **Vague 1.4 + 1.5** (refonte pages restantes + responsive)
-3. **Vague 2** (sécurité)
-4. **Vague 3.1 + 3.2** (monitoring + webhooks)
-5. **Vague 3.3** (WYSIWYG TipTap)
-6. **Vague 3.4** (crons)
+### Objectifs
+- Retirer "Porteur de projet" du parcours principal : MIPROJET = entités formelles à fort potentiel.
+- Formulaires de soumission enrichis : chiffre d'affaires, capital social, gouvernance (postes + titulaires), produits/services, marchés desservis, modèle économique, actions menées, indicateurs.
+- Pages publiques par profil : Investisseurs · Entreprises & Start-ups · Bailleurs & Institutions · Coopératives · Associations · ONG (contenu spécifique + opportunités filtrées).
+- Espaces clients connectés adaptés par `user_type`.
+- Pages admin par profil pour gérer/segmenter.
 
-Je commence **immédiatement par la Vague 1.1 → 1.3** (impact visuel maximal). Confirmez ce plan et j'attaque.
+### SQL à exécuter manuellement (LOT 2)
+```sql
+-- Enrichissement profile / entité
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS legal_form text,
+  ADD COLUMN IF NOT EXISTS share_capital numeric,
+  ADD COLUMN IF NOT EXISTS annual_revenue numeric,
+  ADD COLUMN IF NOT EXISTS employees_count integer,
+  ADD COLUMN IF NOT EXISTS founding_year integer,
+  ADD COLUMN IF NOT EXISTS website text,
+  ADD COLUMN IF NOT EXISTS sector text,
+  ADD COLUMN IF NOT EXISTS business_model text;
+
+-- Gouvernance (postes stratégiques)
+CREATE TABLE IF NOT EXISTS public.entity_governance (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  project_id uuid,
+  role_title text NOT NULL,
+  full_name text NOT NULL,
+  bio text,
+  linkedin_url text,
+  is_strategic boolean DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.entity_governance TO authenticated;
+GRANT ALL ON public.entity_governance TO service_role;
+ALTER TABLE public.entity_governance ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Owner manages governance" ON public.entity_governance
+  FOR ALL TO authenticated
+  USING (auth.uid() = user_id OR public.has_role(auth.uid(),'admin'))
+  WITH CHECK (auth.uid() = user_id OR public.has_role(auth.uid(),'admin'));
+
+-- Produits / services
+CREATE TABLE IF NOT EXISTS public.entity_products (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  project_id uuid,
+  name text NOT NULL,
+  description text,
+  market text,
+  revenue_share_pct numeric,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.entity_products TO authenticated;
+GRANT ALL ON public.entity_products TO service_role;
+ALTER TABLE public.entity_products ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Owner manages products" ON public.entity_products
+  FOR ALL TO authenticated
+  USING (auth.uid() = user_id OR public.has_role(auth.uid(),'admin'))
+  WITH CHECK (auth.uid() = user_id OR public.has_role(auth.uid(),'admin'));
+```
+
+### Front (LOT 2)
+- Pages publiques `/profils/investisseurs`, `/profils/entreprises`, `/profils/bailleurs`, `/profils/cooperatives`, `/profils/associations`, `/profils/ong` (contenu + bénéfices + CTA + opportunités filtrées).
+- Refonte `SubmitProject` en multi-étapes spécifique au `user_type`.
+- Adapter `Dashboard` : composants par profil (Investor / Funder / Enterprise / NGO / Cooperative / Association).
+- Admin : onglet "Entités" avec filtres par profil + KPIs.
+
+---
+
+## Important — base partagée avec l'autre projet (MIPROJET app)
+Toutes les tables ci-dessus restent dans le même schéma `public`. Le déclencheur `mp_auto_publish_eligible_project` continue de fonctionner pour les scores produits par l'autre app. Aucune duplication n'est créée : on enrichit `projects` et on lit `mp_projects` / `mp_scoring_results`.
+
+---
+
+## Ordre de livraison proposé
+1. Tu exécutes le SQL **LOT 1**.
+2. Je code l'UI publique projets + détail + formulaire d'intérêt + admin prospects + auto-import Agricapital.
+3. Sur "continue", on enchaîne le **LOT 2** (SQL puis code).
