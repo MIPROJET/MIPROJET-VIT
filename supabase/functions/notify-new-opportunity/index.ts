@@ -11,13 +11,35 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405, headers: corsHeaders });
 
   try {
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    // Auth: allow DB trigger (x-internal-secret == service role) or admin user
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const bearer = authHeader.replace(/^Bearer\s+/i, "");
+    const internalSecret = req.headers.get("x-internal-secret") ?? "";
+    let authorized = bearer === serviceRoleKey || internalSecret === serviceRoleKey;
+    if (!authorized && bearer) {
+      const { data: userData } = await supabase.auth.getUser(bearer);
+      if (userData?.user) {
+        const { data: roleRow } = await supabase
+          .from("user_roles").select("id")
+          .eq("user_id", userData.user.id).eq("role", "admin").maybeSingle();
+        authorized = !!roleRow;
+      }
+    }
+    if (!authorized) {
+      return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { opportunityId } = await req.json();
     if (!opportunityId) {
       return new Response(JSON.stringify({ ok: false, error: "opportunityId required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     const { data: opp, error: oppErr } = await supabase
       .from("opportunities").select("*").eq("id", opportunityId).single();
