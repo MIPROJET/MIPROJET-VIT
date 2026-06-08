@@ -1,0 +1,1 @@
+ALTER VIEW public.public_projects SET (security_invoker = true);
