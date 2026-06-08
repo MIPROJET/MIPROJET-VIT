@@ -235,3 +235,71 @@ Toutes les tables ci-dessus restent dans le même schéma `public`. Le déclench
 1. Tu exécutes le SQL **LOT 1**.
 2. Je code l'UI publique projets + détail + formulaire d'intérêt + admin prospects + auto-import Agricapital.
 3. Sur "continue", on enchaîne le **LOT 2** (SQL puis code).
+
+---
+
+## LOT 2 — Vitrine AgriCapital + champs site web / galerie (à exécuter manuellement)
+
+**Objectif** : afficher AgriCapital comme projet vitrine (score 73/100, badge Standard argent), avec cover, logo, galerie et lien vers www.agricapital.ci. Une fois ce SQL exécuté, la carte apparaît automatiquement dans `/projects` et la page détail `/projects/{id}` charge tout sans aucun code à modifier.
+
+### SQL à exécuter (LOT 2)
+
+```sql
+-- 1) Champs vitrine supplémentaires
+ALTER TABLE public.projects
+  ADD COLUMN IF NOT EXISTS website_url text,
+  ADD COLUMN IF NOT EXISTS gallery_urls text[] DEFAULT '{}';
+
+-- 2) Insertion (ou mise à jour) du projet AgriCapital
+INSERT INTO public.projects (
+  id, title, sector, category, country, city,
+  description, public_summary,
+  logo_url, cover_url, image_url, gallery_urls, website_url,
+  amount_requested, currency, expected_roi,
+  mp_score, recommendation_level, risk_score,
+  status, is_public, funds_raised, funding_goal,
+  created_at, updated_at
+) VALUES (
+  gen_random_uuid(),
+  'AgriCapital — Plantation industrielle de palmier à huile',
+  'Agro-industrie',
+  'Agriculture',
+  'Côte d''Ivoire',
+  'Soubré',
+  E'AgriCapital structure une filière intégrée de production durable d''huile de palme en Côte d''Ivoire, du planteur à la transformation. Le projet mobilise une réserve foncière sécurisée, une pépinière opérationnelle de plants sélectionnés haut rendement, et un réseau de planteurs partenaires accompagnés sur tout le cycle (préparation, plantation clé-en-main, suivi agronomique, récolte, valorisation).\n\n## Pourquoi AgriCapital ?\n- Filière palmier à huile : marché structurellement déficitaire en Afrique de l''Ouest, demande industrielle et alimentaire en forte croissance.\n- Modèle intégré planteurs + pépinière + accompagnement technique = sécurisation du rendement et de la qualité.\n- Foncier sécurisé, levés polygonaux réalisés, mobilisation communautaire active.\n- Équipe terrain expérimentée, gouvernance structurée, ancrage local fort.\n\n## Bénéfices pour les investisseurs & partenaires\n- Exposition à un actif agricole tangible, productif sur 25+ ans.\n- Revenus récurrents post-maturation, marché à forte profondeur.\n- Co-investissement possible sur plusieurs tranches (foncier, pépinière, plantation, transformation).\n- Reporting structuré selon les standards MIPROJET.\n\n## Impact\n- Création d''emplois ruraux directs et indirects.\n- Inclusion économique des planteurs partenaires (formation, intrants, débouchés garantis).\n- Reforestation productive, diversification des revenus agricoles locaux.\n- Souveraineté alimentaire et industrielle nationale renforcée.\n\n## Statut du projet\nPhase active : sécurisation foncière finalisée, pépinière en production, premières mobilisations communautaires effectuées (lancement officiel — juin 2026).',
+  'Filière intégrée et durable de palmier à huile en Côte d''Ivoire : foncier sécurisé, pépinière haut rendement, planteurs partenaires accompagnés, ancrage local et impact social fort.',
+  '/__l5e/assets-v1/334f2efc-b014-4515-bea3-518f3d8e4b24/agricapital-logo.png',
+  '/__l5e/assets-v1/135e906a-f237-47a1-bdd6-cf8784044e43/agricapital-cover.jpg',
+  '/__l5e/assets-v1/135e906a-f237-47a1-bdd6-cf8784044e43/agricapital-cover.jpg',
+  ARRAY[
+    '/__l5e/assets-v1/335afa94-a00d-4136-95a2-49eb380bd581/agricapital-palmier.jpg',
+    '/__l5e/assets-v1/c93ba69a-9b2c-49fd-aa71-ded811b422f6/agricapital-pepiniere.jpg',
+    '/__l5e/assets-v1/eed1ccc5-ad8d-4121-90eb-e57b0511d1ab/agricapital-equipe.jpg',
+    '/__l5e/assets-v1/17d7a63d-26ae-47cd-b625-2bd9487a4d91/agricapital-lancement.jpg',
+    '/__l5e/assets-v1/69317e8a-dc21-4f50-b7ff-4af0b8fc2c7d/agricapital-leve.jpg',
+    '/__l5e/assets-v1/c7382555-8cea-4d8c-88ba-321dfe7d609b/agricapital-fonciere.jpg'
+  ],
+  'https://www.agricapital.ci',
+  NULL,        -- amount_requested : volontairement non public
+  'XOF',
+  NULL,        -- expected_roi : volontairement non public
+  73,          -- score MIPROJET → badge Standard (argent)
+  'standard',
+  'B',
+  'published',
+  true,
+  0,
+  0,
+  now(),
+  now()
+)
+ON CONFLICT DO NOTHING;
+```
+
+### Branchement automatique côté UI (déjà livré dans cette réponse)
+- `src/lib/scoreTier.ts` — tiers Bronze / Argent / Or / Platine selon le score.
+- `src/components/projects/ScoreBadge.tsx` — badge premium réutilisable (gradient + glow).
+- `PublicProjectCard.tsx` — affiche le nouveau badge en overlay sur la cover.
+- `ProjectDetail.tsx` — header avec logo + score badge tier, bouton "Site officiel" si `website_url`, image de cover dans la carte latérale, nouvel onglet "Galerie" lisant `gallery_urls`, montant masqué si non public.
+
+Aucun code supplémentaire à modifier après exécution du SQL : AgriCapital apparaîtra automatiquement avec le score 73 affiché en argent et toute la vitrine s'auto-câblera.
