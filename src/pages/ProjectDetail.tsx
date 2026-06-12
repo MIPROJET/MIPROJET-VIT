@@ -21,6 +21,9 @@ import { formatProjectDisplayId } from "@/lib/projectId";
 import { InvestorInterestDialog } from "@/components/projects/InvestorInterestDialog";
 import { interpretScore, getMaturityLevel, EVALUATION_AXES } from "@/lib/evaluation";
 import { ScoreBadge } from "@/components/projects/ScoreBadge";
+import { MarkdownView } from "@/components/ui/markdown-view";
+
+interface TeamMember { id: string; full_name: string; role_title: string; bio?: string | null; photo_url?: string | null; display_order?: number | null; }
 
 interface Project {
   id: string;
@@ -50,6 +53,8 @@ interface Project {
   recommendation_level?: string | null;
   website_url?: string | null;
   gallery_urls?: string[] | null;
+  cover_url_mobile?: string | null;
+  tagline?: string | null;
 }
 
 interface Evaluation {
@@ -89,6 +94,7 @@ const ProjectDetail = () => {
   const [project, setProject] = useState<Project | null>(null);
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
   const [updates, setUpdates] = useState<ProjectUpdate[]>([]);
+  const [team, setTeam] = useState<TeamMember[]>([]);
   const [contributorsCount, setContributorsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -100,12 +106,21 @@ const ProjectDetail = () => {
       fetchUpdates();
       fetchContributors();
       fetchEvaluation();
+      fetchTeam();
     }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
     });
   }, [id]);
+
+  const fetchTeam = async () => {
+    try {
+      const { data } = await (supabase as any)
+        .from("project_team").select("*").eq("project_id", id).order("display_order", { ascending: true });
+      setTeam(data || []);
+    } catch (e) { console.error("team fetch", e); }
+  };
 
   const fetchProject = async () => {
     try {
