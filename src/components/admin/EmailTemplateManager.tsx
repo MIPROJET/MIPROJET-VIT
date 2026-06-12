@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Mail, Wand2, Loader2, Eye, Copy, Send } from "lucide-react";
+import { EmailMediaInserter } from "./EmailMediaInserter";
 
 const emailTemplateTypes = [
   { value: 'welcome', label: '🎉 Bienvenue / Inscription', description: 'Email envoyé après inscription' },
@@ -291,6 +292,14 @@ export const EmailTemplateManager = ({ onUseTemplate }: EmailTemplateManagerProp
           </CardContent>
         </Card>
       </div>
+
+      {/* Media inserter — image or video, URL or upload */}
+      {showPreview && generatedEmail && (
+        <EmailMediaInserter onInsert={(snippet) => {
+          setGeneratedEmail((prev) => prev ? { ...prev, html: prev.html.replace(/<\/body>/i, `${snippet}</body>`) } : prev);
+          toast({ title: "Aperçu mis à jour" });
+        }} />
+      )}
 
       {/* Preview */}
       {showPreview && generatedEmail && (
