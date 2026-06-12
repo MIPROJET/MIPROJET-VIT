@@ -85,15 +85,28 @@ export const InvestorInterestDialog = ({ projectId, projectTitle, trigger }: Pro
       time_horizon: form.time_horizon || null,
       message: form.message.trim() || null,
     };
-    const { error } = await (supabase as any).from("investor_prospects").insert(payload);
-    setSubmitting(false);
+    const { data: inserted, error } = await (supabase as any)
+      .from("investor_prospects")
+      .insert(payload)
+      .select()
+      .single();
     if (error) {
+      setSubmitting(false);
       toast({ title: "Erreur", description: error.message, variant: "destructive" });
       return;
     }
+    // Fire-and-forget notification (invest@ivoireprojet.com + candidate confirmation)
+    try {
+      await supabase.functions.invoke("notify-investor-interest", {
+        body: { prospectId: inserted?.id, ...payload, project_title: projectTitle },
+      });
+    } catch (e) {
+      console.warn("notify-investor-interest failed:", (e as Error).message);
+    }
+    setSubmitting(false);
     toast({
       title: "Merci ! Votre intérêt a été enregistré",
-      description: "Notre équipe vous contactera très rapidement pour la mise en relation.",
+      description: "Vous recevez un email de confirmation. Notre équipe vous recontacte sous 48 h.",
     });
     setOpen(false);
     setForm({ ...form, message: "" });

@@ -1,1 +1,7 @@
 project_id = "nrrgqnruoylwztddkntm"
+
+[functions.process-email-queue]
+verify_jwt = false
+
+[functions.notify-investor-interest]
+verify_jwt = false
