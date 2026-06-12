@@ -21,6 +21,9 @@ import { formatProjectDisplayId } from "@/lib/projectId";
 import { InvestorInterestDialog } from "@/components/projects/InvestorInterestDialog";
 import { interpretScore, getMaturityLevel, EVALUATION_AXES } from "@/lib/evaluation";
 import { ScoreBadge } from "@/components/projects/ScoreBadge";
+import { MarkdownView } from "@/components/ui/markdown-view";
+
+interface TeamMember { id: string; full_name: string; role_title: string; bio?: string | null; photo_url?: string | null; display_order?: number | null; }
 
 interface Project {
   id: string;
@@ -50,6 +53,8 @@ interface Project {
   recommendation_level?: string | null;
   website_url?: string | null;
   gallery_urls?: string[] | null;
+  cover_url_mobile?: string | null;
+  tagline?: string | null;
 }
 
 interface Evaluation {
@@ -89,6 +94,7 @@ const ProjectDetail = () => {
   const [project, setProject] = useState<Project | null>(null);
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
   const [updates, setUpdates] = useState<ProjectUpdate[]>([]);
+  const [team, setTeam] = useState<TeamMember[]>([]);
   const [contributorsCount, setContributorsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -100,12 +106,21 @@ const ProjectDetail = () => {
       fetchUpdates();
       fetchContributors();
       fetchEvaluation();
+      fetchTeam();
     }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
     });
   }, [id]);
+
+  const fetchTeam = async () => {
+    try {
+      const { data } = await (supabase as any)
+        .from("project_team").select("*").eq("project_id", id).order("display_order", { ascending: true });
+      setTeam(data || []);
+    } catch (e) { console.error("team fetch", e); }
+  };
 
   const fetchProject = async () => {
     try {
@@ -309,9 +324,18 @@ const ProjectDetail = () => {
 
               {/* Cover / Funding Card */}
               <Card className="bg-card/95 backdrop-blur overflow-hidden">
-                {(project.cover_url || project.image_url) && (
-                  <div className="h-48 w-full overflow-hidden">
-                    <img src={project.cover_url || project.image_url!} alt={project.title} className="w-full h-full object-cover" />
+                {(project.cover_url || project.cover_url_mobile || project.image_url) && (
+                  <div className="w-full overflow-hidden bg-muted">
+                    <picture>
+                      {project.cover_url_mobile && (
+                        <source media="(max-width: 767px)" srcSet={project.cover_url_mobile} />
+                      )}
+                      <img
+                        src={project.cover_url || project.image_url || project.cover_url_mobile!}
+                        alt={project.title}
+                        className="w-full h-auto object-cover max-h-72 md:max-h-80"
+                      />
+                    </picture>
                   </div>
                 )}
                 <CardContent className="pt-6">
@@ -372,8 +396,18 @@ const ProjectDetail = () => {
 
               <TabsContent value="description" className="mt-6">
                 <Card>
-                  <CardContent className="pt-6 prose max-w-none">
-                    <div className="whitespace-pre-wrap">{project.description}</div>
+                  <CardContent className="pt-6">
+                    <MarkdownView>{project.description}</MarkdownView>
+                    <div className="mt-8 flex flex-wrap gap-3 pt-6 border-t">
+                      <InvestorInterestDialog projectId={project.id} projectTitle={project.title} />
+                      {project.website_url && (
+                        <Button asChild variant="outline" size="lg">
+                          <a href={project.website_url} target="_blank" rel="noopener noreferrer">
+                            <Globe className="mr-2 h-4 w-4" /> Site officiel
+                          </a>
+                        </Button>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -552,12 +586,14 @@ const ProjectDetail = () => {
                   updates.map((update) => (
                     <Card key={update.id}>
                       <CardHeader>
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
                           <CardTitle className="text-lg">{update.title}</CardTitle>
-                          <span className="text-sm text-muted-foreground">{new Date(update.created_at).toLocaleDateString()}</span>
+                          <span className="text-sm text-muted-foreground">{new Date(update.created_at).toLocaleDateString('fr-FR')}</span>
                         </div>
                       </CardHeader>
-                      <CardContent><p className="text-muted-foreground">{update.content}</p></CardContent>
+                      <CardContent>
+                        <MarkdownView>{update.content}</MarkdownView>
+                      </CardContent>
                     </Card>
                   ))
                 ) : (
@@ -571,19 +607,51 @@ const ProjectDetail = () => {
               </TabsContent>
 
               <TabsContent value="team" className="mt-6">
-                <Card className="text-center py-8">
-                  <CardContent>
-                    <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">Informations sur l'équipe bientôt disponibles</p>
-                  </CardContent>
-                </Card>
+                {team.length > 0 ? (
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {team.map((m) => (
+                      <Card key={m.id}>
+                        <CardContent className="pt-6 flex gap-4">
+                          <Avatar className="h-14 w-14">
+                            {m.photo_url && <AvatarImage src={m.photo_url} alt={m.full_name} />}
+                            <AvatarFallback>{m.full_name.split(" ").map(x=>x[0]).join("").slice(0,2)}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <p className="font-semibold">{m.full_name}</p>
+                            <p className="text-sm text-primary font-medium">{m.role_title}</p>
+                            {m.bio && <p className="text-sm text-muted-foreground mt-2">{m.bio}</p>}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <Card className="text-center py-8">
+                    <CardContent>
+                      <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">Informations sur l'équipe bientôt disponibles</p>
+                    </CardContent>
+                  </Card>
+                )}
               </TabsContent>
 
               <TabsContent value="documents" className="mt-6">
-                <Card className="text-center py-8">
-                  <CardContent>
-                    <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">Documents disponibles après investissement</p>
+                <Card>
+                  <CardContent className="pt-8 pb-8 text-center space-y-5">
+                    <FileText className="h-14 w-14 mx-auto text-primary" />
+                    <div className="space-y-2 max-w-2xl mx-auto">
+                      <h3 className="text-xl font-bold">Documents confidentiels — accès qualifié</h3>
+                      <p className="text-muted-foreground">
+                        L'Information Memorandum et les documents stratégiques détaillés (modèle économique, projections, structure du capital) sont transmis <strong>après un premier échange stratégique de qualification</strong>.
+                      </p>
+                    </div>
+                    <div className="bg-muted/40 rounded-lg p-4 max-w-md mx-auto text-sm">
+                      <p>📩 <a href="mailto:invest@ivoireprojet.com" className="font-semibold text-primary">invest@ivoireprojet.com</a></p>
+                      <p className="mt-1">📞 +225 07 07 16 79 21 · +225 05 05 23 30 05</p>
+                    </div>
+                    <div className="pt-2">
+                      <InvestorInterestDialog projectId={project.id} projectTitle={project.title} />
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>

@@ -155,11 +155,41 @@ export async function sendMail(input: SendInput): Promise<SendResult> {
   }
 
   const preferred = await pickProvider();
+
+  // BOTH providers saturated → enqueue for later instead of failing
+  if (preferred === null) {
+    try {
+      const next = new Date();
+      // schedule for tomorrow 06:00 UTC (after daily counter resets)
+      next.setUTCDate(next.getUTCDate() + 1);
+      next.setUTCHours(6, 0, 0, 0);
+      await supabaseAdmin.from("email_queue").insert({
+        to_email: input.to,
+        subject: input.subject,
+        html: input.html,
+        text_content: input.text ?? null,
+        kind: input.kind ?? "transactional",
+        campaign_id: input.campaignId ?? null,
+        recipient_user_id: input.recipientUserId ?? null,
+        reply_to: input.reply_to ?? null,
+        from_address: input.from ?? null,
+        unsubscribe_url: input.unsubscribeUrl ?? null,
+        bypass_unsubscribe_check: !!input.bypassUnsubscribeCheck,
+        status: "pending",
+        scheduled_for: next.toISOString(),
+        last_error: "quota_saturated_queued",
+      });
+      const result: SendResult = { ok: true, error: "queued — quota saturated" };
+      await logEmail({ ...input, kind: (input.kind ?? "transactional") + "_queued" }, result);
+      return result;
+    } catch (e) {
+      console.error("[mailer] enqueue failed:", (e as Error).message);
+    }
+  }
+
   const order: ("brevo" | "resend")[] = preferred === "resend"
     ? ["resend", "brevo"]
-    : preferred === "brevo"
-      ? ["brevo", "resend"]
-      : ["brevo", "resend"]; // both saturated → still try
+    : ["brevo", "resend"];
 
   let lastResult: SendResult = { ok: false, error: "no provider attempted" };
   for (const p of order) {

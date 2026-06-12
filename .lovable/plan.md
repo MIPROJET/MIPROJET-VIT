@@ -1,305 +1,172 @@
+# LOT 3 — Newsletter import + Email queue + AgriCapital IM + Media upload
 
-## Livré dans cette réponse
-- Page d'administration **Témoignages** (CRUD + publier/dépublier) ajoutée dans Admin → Gestion de contenu → Témoignages. Connectée à la table `testimonials` existante.
+## Branchement automatique
+Dès que tu exécutes le SQL ci-dessous dans Supabase, l'UI prend tout en charge sans action supplémentaire :
+- 1074 emails ajoutés à `newsletter_subscribers` → ils recevront les prochaines campagnes.
+- File d'attente email (`email_queue` + `process_email_queue` cron) : si le quota 400/jour (300 Brevo + 100 Resend) est atteint, les emails sont mis en attente et envoyés automatiquement le lendemain.
+- AgriCapital : couverture responsive, description IM (extrait public), équipe, actualité, galerie, documents (échange stratégique), formulaire d'intérêt qui envoie un mail automatique à `invest@ivoireprojet.com`.
+- Email templates admin : remplacement image **ou** vidéo (upload direct ou URL) avec optimisation auto.
 
 ---
 
-## LOT 1 — Affichage public des projets (priorité absolue)
+## 1) Import newsletter (1074 emails — fichier généré)
 
-### Objectifs
-1. Une grille moderne et dynamique des projets (publique + investisseurs + bailleurs).
-2. Page détail projet "vitrine" : résumé auto-généré, KPI, logo + image de couverture, montant, score MiProjet+, recommandation.
-3. Bouton **"Ce projet m'intéresse"** → formulaire prospect investisseur (capacité, type d'engagement, retour souhaité…) → table dédiée + notification admin.
-4. Auto-publication des projets MiProjet+ qui atteignent le niveau **Finançable** (déjà partiellement câblé via `mp_auto_publish_eligible_project`), avec récupération automatique du logo, photo, score, secteur, montant pour affichage immédiat (cas Agricapital).
+Le fichier SQL complet est disponible en téléchargement ci-dessous (trop volumineux pour être inliné). Il fait `INSERT … ON CONFLICT DO UPDATE` donc il est ré-exécutable sans risque.
 
-### Composants front à créer/refondre
-- `src/components/projects/PublicProjectCard.tsx` — carte moderne (logo + cover + score badge + montant + secteur + pays + CTA).
-- `src/components/projects/PublicProjectGrid.tsx` — grille responsive avec filtres (secteur, montant, score, type d'engagement).
-- `src/pages/PublicProjectDetail.tsx` (ou refonte `ProjectDetail.tsx` pour visiteur non-propriétaire) : hero, résumé IA, chiffres clés (montant demandé, capacité de remboursement, ROI estimé, durée), score MiProjet+ + recommandation, équipe (anonymisée), CTA.
-- `src/components/projects/InvestorInterestDialog.tsx` — formulaire :
-  - capacité d'investissement (tranche),
-  - type souhaité (capital, prêt, don, amorçage, mixte),
-  - retour attendu (%),
-  - souhait actionnariat (oui/non + %),
-  - horizon temps,
-  - message libre,
-  - coordonnées (pré-remplies si connecté).
-- Hook `useAutoSummary(project)` : génère un résumé pertinent (champs présents + niveau MiProjet+) sans exposer données sensibles.
+<presentation-artifact path="newsletter_import_les_mails_2026.sql" mime_type="application/sql"></presentation-artifact>
 
-### Côté admin
-- `AdminProjectsTable` : ajouter colonne "Visible public" + toggle, bouton "Publier maintenant" et affichage du score MiProjet+ lié.
-- Nouveau tab admin **"Prospects investisseurs"** listant les soumissions du formulaire d'intérêt (statut, contact, projet visé).
+---
 
-### SQL à exécuter manuellement (LOT 1)
+## 2) File d'attente email (queue 400/jour)
+
 ```sql
--- 1) Champs vitrine sur projects (si absents)
-ALTER TABLE public.projects
-  ADD COLUMN IF NOT EXISTS logo_url text,
-  ADD COLUMN IF NOT EXISTS cover_url text,
-  ADD COLUMN IF NOT EXISTS public_summary text,
-  ADD COLUMN IF NOT EXISTS expected_roi numeric,
-  ADD COLUMN IF NOT EXISTS repayment_capacity text,
-  ADD COLUMN IF NOT EXISTS funding_types text[] DEFAULT '{}',
-  ADD COLUMN IF NOT EXISTS recommendation_level text DEFAULT 'standard',
-  ADD COLUMN IF NOT EXISTS is_public boolean DEFAULT false,
-  ADD COLUMN IF NOT EXISTS mp_score numeric,
-  ADD COLUMN IF NOT EXISTS country text,
-  ADD COLUMN IF NOT EXISTS city text;
-
--- 2) Vue publique sécurisée (sans contacts ni données sensibles)
-CREATE OR REPLACE VIEW public.public_projects AS
-SELECT
-  p.id, p.display_id, p.short_slug, p.title, p.sector, p.country, p.city,
-  p.amount_requested, p.currency, p.logo_url, p.cover_url, p.public_summary,
-  p.expected_roi, p.repayment_capacity, p.funding_types,
-  p.recommendation_level, p.mp_score, p.status, p.created_at
-FROM public.projects p
-WHERE p.is_public = true AND p.status IN ('published','validated','oriented');
-
-GRANT SELECT ON public.public_projects TO anon, authenticated;
-
--- 3) Table prospects investisseurs (formulaire "Ce projet m'intéresse")
-CREATE TABLE IF NOT EXISTS public.investor_prospects (
+-- 2.1) Table de file d'attente
+CREATE TABLE IF NOT EXISTS public.email_queue (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  project_id uuid NOT NULL,
-  user_id uuid,
-  full_name text NOT NULL,
-  email text NOT NULL,
-  phone text,
-  country text,
-  investment_capacity text,
-  engagement_type text[] DEFAULT '{}', -- equity, loan, donation, seed, mixed
-  expected_return_pct numeric,
-  wants_equity boolean DEFAULT false,
-  equity_share_pct numeric,
-  time_horizon text,
-  message text,
-  status text DEFAULT 'new',
-  admin_notes text,
+  to_email text NOT NULL,
+  subject text NOT NULL,
+  html text NOT NULL,
+  text_content text,
+  kind text DEFAULT 'transactional',
+  campaign_id uuid,
+  recipient_user_id uuid,
+  reply_to text,
+  from_address text,
+  unsubscribe_url text,
+  bypass_unsubscribe_check boolean DEFAULT false,
+  status text NOT NULL DEFAULT 'pending', -- pending | processing | sent | failed
+  attempts int NOT NULL DEFAULT 0,
+  last_error text,
+  scheduled_for timestamptz NOT NULL DEFAULT now(),
+  sent_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.investor_prospects TO authenticated;
-GRANT INSERT ON public.investor_prospects TO anon;
-GRANT ALL ON public.investor_prospects TO service_role;
+CREATE INDEX IF NOT EXISTS idx_email_queue_pending
+  ON public.email_queue(status, scheduled_for)
+  WHERE status = 'pending';
 
-ALTER TABLE public.investor_prospects ENABLE ROW LEVEL SECURITY;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.email_queue TO authenticated;
+GRANT ALL ON public.email_queue TO service_role;
 
-CREATE POLICY "Anyone can submit interest"
-  ON public.investor_prospects FOR INSERT
-  TO anon, authenticated
-  WITH CHECK (
-    email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'
-    AND char_length(full_name) BETWEEN 2 AND 120
-  );
+ALTER TABLE public.email_queue ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Owner sees own submissions"
-  ON public.investor_prospects FOR SELECT
+CREATE POLICY "Admins manage queue"
+  ON public.email_queue FOR ALL
   TO authenticated
-  USING (auth.uid() = user_id OR public.has_role(auth.uid(), 'admin'));
+  USING (public.has_role(auth.uid(),'admin'))
+  WITH CHECK (public.has_role(auth.uid(),'admin'));
 
-CREATE POLICY "Admins manage prospects"
-  ON public.investor_prospects FOR ALL
-  TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'))
-  WITH CHECK (public.has_role(auth.uid(), 'admin'));
-
-CREATE TRIGGER trg_investor_prospects_updated_at
-  BEFORE UPDATE ON public.investor_prospects
+CREATE TRIGGER trg_email_queue_updated_at
+  BEFORE UPDATE ON public.email_queue
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
--- 4) Mise à jour de la fonction d'auto-publication MiProjet+
--- pour synchroniser logo, cover, score, summary depuis mp_projects
-CREATE OR REPLACE FUNCTION public.mp_auto_publish_eligible_project()
-RETURNS trigger
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE
-  v_project public.mp_projects%ROWTYPE;
-  v_existing_id uuid;
-BEGIN
-  IF NEW.level IS DISTINCT FROM 'Finançable' THEN RETURN NEW; END IF;
-  SELECT * INTO v_project FROM public.mp_projects WHERE id = NEW.project_id;
-  IF NOT FOUND OR COALESCE(v_project.publish_when_eligible, false) = false THEN RETURN NEW; END IF;
+-- 2.2) Cron toutes les 10 minutes pour vider la file
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+CREATE EXTENSION IF NOT EXISTS pg_net;
 
-  SELECT id INTO v_existing_id FROM public.projects
-  WHERE owner_id = v_project.user_id AND metadata->>'mp_project_id' = v_project.id::text LIMIT 1;
+-- Supprime l'ancien job s'il existe puis recrée
+DO $$ BEGIN
+  PERFORM cron.unschedule('process-email-queue-job');
+EXCEPTION WHEN OTHERS THEN NULL; END $$;
 
-  IF v_existing_id IS NULL THEN
-    INSERT INTO public.projects
-      (owner_id, title, sector, amount_requested, status, source, is_public, mp_score, country, city, metadata)
-    VALUES (
-      v_project.user_id,
-      COALESCE(v_project.title, 'Projet MiProjet+'),
-      v_project.sector, v_project.amount_needed,
-      'published', 'miprojet', true,
-      NEW.score_global, v_project.country, v_project.city,
-      jsonb_build_object('mp_project_id', v_project.id, 'mp_score', NEW.score_global)
-    );
-  ELSE
-    UPDATE public.projects
-    SET title = COALESCE(v_project.title, title),
-        sector = COALESCE(v_project.sector, sector),
-        amount_requested = COALESCE(v_project.amount_needed, amount_requested),
-        status = 'published', is_public = true,
-        mp_score = NEW.score_global,
-        country = COALESCE(v_project.country, country),
-        city = COALESCE(v_project.city, city),
-        metadata = COALESCE(metadata,'{}'::jsonb) || jsonb_build_object('mp_project_id', v_project.id, 'mp_score', NEW.score_global),
-        updated_at = now()
-    WHERE id = v_existing_id;
-  END IF;
-  RETURN NEW;
-END $$;
+SELECT cron.schedule(
+  'process-email-queue-job',
+  '*/10 * * * *',
+  $cron$
+  SELECT net.http_post(
+    url := 'https://nrrgqnruoylwztddkntm.supabase.co/functions/v1/process-email-queue',
+    headers := jsonb_build_object('Content-Type','application/json'),
+    body := jsonb_build_object('source','cron')
+  );
+  $cron$
+);
 ```
 
 ---
 
-## LOT 2 — Refonte profils entités (entreprise, startup, ONG, coopérative, association)
-
-### Objectifs
-- Retirer "Porteur de projet" du parcours principal : MIPROJET = entités formelles à fort potentiel.
-- Formulaires de soumission enrichis : chiffre d'affaires, capital social, gouvernance (postes + titulaires), produits/services, marchés desservis, modèle économique, actions menées, indicateurs.
-- Pages publiques par profil : Investisseurs · Entreprises & Start-ups · Bailleurs & Institutions · Coopératives · Associations · ONG (contenu spécifique + opportunités filtrées).
-- Espaces clients connectés adaptés par `user_type`.
-- Pages admin par profil pour gérer/segmenter.
-
-### SQL à exécuter manuellement (LOT 2)
-```sql
--- Enrichissement profile / entité
-ALTER TABLE public.profiles
-  ADD COLUMN IF NOT EXISTS legal_form text,
-  ADD COLUMN IF NOT EXISTS share_capital numeric,
-  ADD COLUMN IF NOT EXISTS annual_revenue numeric,
-  ADD COLUMN IF NOT EXISTS employees_count integer,
-  ADD COLUMN IF NOT EXISTS founding_year integer,
-  ADD COLUMN IF NOT EXISTS website text,
-  ADD COLUMN IF NOT EXISTS sector text,
-  ADD COLUMN IF NOT EXISTS business_model text;
-
--- Gouvernance (postes stratégiques)
-CREATE TABLE IF NOT EXISTS public.entity_governance (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
-  project_id uuid,
-  role_title text NOT NULL,
-  full_name text NOT NULL,
-  bio text,
-  linkedin_url text,
-  is_strategic boolean DEFAULT true,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.entity_governance TO authenticated;
-GRANT ALL ON public.entity_governance TO service_role;
-ALTER TABLE public.entity_governance ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Owner manages governance" ON public.entity_governance
-  FOR ALL TO authenticated
-  USING (auth.uid() = user_id OR public.has_role(auth.uid(),'admin'))
-  WITH CHECK (auth.uid() = user_id OR public.has_role(auth.uid(),'admin'));
-
--- Produits / services
-CREATE TABLE IF NOT EXISTS public.entity_products (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
-  project_id uuid,
-  name text NOT NULL,
-  description text,
-  market text,
-  revenue_share_pct numeric,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.entity_products TO authenticated;
-GRANT ALL ON public.entity_products TO service_role;
-ALTER TABLE public.entity_products ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Owner manages products" ON public.entity_products
-  FOR ALL TO authenticated
-  USING (auth.uid() = user_id OR public.has_role(auth.uid(),'admin'))
-  WITH CHECK (auth.uid() = user_id OR public.has_role(auth.uid(),'admin'));
-```
-
-### Front (LOT 2)
-- Pages publiques `/profils/investisseurs`, `/profils/entreprises`, `/profils/bailleurs`, `/profils/cooperatives`, `/profils/associations`, `/profils/ong` (contenu + bénéfices + CTA + opportunités filtrées).
-- Refonte `SubmitProject` en multi-étapes spécifique au `user_type`.
-- Adapter `Dashboard` : composants par profil (Investor / Funder / Enterprise / NGO / Cooperative / Association).
-- Admin : onglet "Entités" avec filtres par profil + KPIs.
-
----
-
-## Important — base partagée avec l'autre projet (MIPROJET app)
-Toutes les tables ci-dessus restent dans le même schéma `public`. Le déclencheur `mp_auto_publish_eligible_project` continue de fonctionner pour les scores produits par l'autre app. Aucune duplication n'est créée : on enrichit `projects` et on lit `mp_projects` / `mp_scoring_results`.
-
----
-
-## Ordre de livraison proposé
-1. Tu exécutes le SQL **LOT 1**.
-2. Je code l'UI publique projets + détail + formulaire d'intérêt + admin prospects + auto-import Agricapital.
-3. Sur "continue", on enchaîne le **LOT 2** (SQL puis code).
-
----
-
-## LOT 2 — Vitrine AgriCapital + champs site web / galerie (à exécuter manuellement)
-
-**Objectif** : afficher AgriCapital comme projet vitrine (score 73/100, badge Standard argent), avec cover, logo, galerie et lien vers www.agricapital.ci. Une fois ce SQL exécuté, la carte apparaît automatiquement dans `/projects` et la page détail `/projects/{id}` charge tout sans aucun code à modifier.
-
-### SQL à exécuter (LOT 2)
+## 3) AgriCapital — mise à jour vitrine (extrait public IM)
 
 ```sql
--- 1) Champs vitrine supplémentaires
+-- 3.1) Champs supplémentaires (déjà présents la plupart, ON CONFLICT-safe)
 ALTER TABLE public.projects
-  ADD COLUMN IF NOT EXISTS website_url text,
-  ADD COLUMN IF NOT EXISTS gallery_urls text[] DEFAULT '{}';
+  ADD COLUMN IF NOT EXISTS cover_url_mobile text,
+  ADD COLUMN IF NOT EXISTS tagline text;
 
--- 2) Insertion (ou mise à jour) du projet AgriCapital
-INSERT INTO public.projects (
-  id, title, sector, category, country, city,
-  description, public_summary,
-  logo_url, cover_url, image_url, gallery_urls, website_url,
-  amount_requested, currency, expected_roi,
-  mp_score, recommendation_level, risk_score,
-  status, is_public, funds_raised, funding_goal,
-  created_at, updated_at
-) VALUES (
-  gen_random_uuid(),
-  'AgriCapital — Plantation industrielle de palmier à huile',
-  'Agro-industrie',
-  'Agriculture',
-  'Côte d''Ivoire',
-  'Soubré',
-  E'AgriCapital structure une filière intégrée de production durable d''huile de palme en Côte d''Ivoire, du planteur à la transformation. Le projet mobilise une réserve foncière sécurisée, une pépinière opérationnelle de plants sélectionnés haut rendement, et un réseau de planteurs partenaires accompagnés sur tout le cycle (préparation, plantation clé-en-main, suivi agronomique, récolte, valorisation).\n\n## Pourquoi AgriCapital ?\n- Filière palmier à huile : marché structurellement déficitaire en Afrique de l''Ouest, demande industrielle et alimentaire en forte croissance.\n- Modèle intégré planteurs + pépinière + accompagnement technique = sécurisation du rendement et de la qualité.\n- Foncier sécurisé, levés polygonaux réalisés, mobilisation communautaire active.\n- Équipe terrain expérimentée, gouvernance structurée, ancrage local fort.\n\n## Bénéfices pour les investisseurs & partenaires\n- Exposition à un actif agricole tangible, productif sur 25+ ans.\n- Revenus récurrents post-maturation, marché à forte profondeur.\n- Co-investissement possible sur plusieurs tranches (foncier, pépinière, plantation, transformation).\n- Reporting structuré selon les standards MIPROJET.\n\n## Impact\n- Création d''emplois ruraux directs et indirects.\n- Inclusion économique des planteurs partenaires (formation, intrants, débouchés garantis).\n- Reforestation productive, diversification des revenus agricoles locaux.\n- Souveraineté alimentaire et industrielle nationale renforcée.\n\n## Statut du projet\nPhase active : sécurisation foncière finalisée, pépinière en production, premières mobilisations communautaires effectuées (lancement officiel — juin 2026).',
-  'Filière intégrée et durable de palmier à huile en Côte d''Ivoire : foncier sécurisé, pépinière haut rendement, planteurs partenaires accompagnés, ancrage local et impact social fort.',
-  '/__l5e/assets-v1/334f2efc-b014-4515-bea3-518f3d8e4b24/agricapital-logo.png',
-  '/__l5e/assets-v1/135e906a-f237-47a1-bdd6-cf8784044e43/agricapital-cover.jpg',
-  '/__l5e/assets-v1/135e906a-f237-47a1-bdd6-cf8784044e43/agricapital-cover.jpg',
-  ARRAY[
+-- 3.2) Mise à jour du projet AgriCapital (id connu via URL preview)
+UPDATE public.projects SET
+  title = 'AgriCapital — Plantations agricoles intégrées en Côte d''Ivoire',
+  tagline = 'Investir la terre. Cultiver l''avenir.',
+  sector = 'Agro-industrie',
+  category = 'Agriculture',
+  country = 'Côte d''Ivoire',
+  city = 'Daloa',
+  website_url = 'https://www.agricapital.ci',
+  logo_url  = '/__l5e/assets-v1/334f2efc-b014-4515-bea3-518f3d8e4b24/agricapital-logo.png',
+  cover_url = '/__l5e/assets-v1/dac95186-7b95-4e72-9ba7-e3acc6899fe2/agricapital-cover-desktop.png',
+  cover_url_mobile = '/__l5e/assets-v1/99763a84-5681-4800-9a5e-26e070b1ea35/agricapital-cover-mobile.png',
+  image_url = '/__l5e/assets-v1/dac95186-7b95-4e72-9ba7-e3acc6899fe2/agricapital-cover-desktop.png',
+  gallery_urls = ARRAY[
     '/__l5e/assets-v1/335afa94-a00d-4136-95a2-49eb380bd581/agricapital-palmier.jpg',
     '/__l5e/assets-v1/c93ba69a-9b2c-49fd-aa71-ded811b422f6/agricapital-pepiniere.jpg',
+    '/__l5e/assets-v1/1327af09-2b46-4f74-a041-0357aa11df09/agricapital-pepiniere-2.jpg',
     '/__l5e/assets-v1/eed1ccc5-ad8d-4121-90eb-e57b0511d1ab/agricapital-equipe.jpg',
     '/__l5e/assets-v1/17d7a63d-26ae-47cd-b625-2bd9487a4d91/agricapital-lancement.jpg',
     '/__l5e/assets-v1/69317e8a-dc21-4f50-b7ff-4af0b8fc2c7d/agricapital-leve.jpg',
     '/__l5e/assets-v1/c7382555-8cea-4d8c-88ba-321dfe7d609b/agricapital-fonciere.jpg'
   ],
-  'https://www.agricapital.ci',
-  NULL,        -- amount_requested : volontairement non public
-  'XOF',
-  NULL,        -- expected_roi : volontairement non public
-  73,          -- score MIPROJET → badge Standard (argent)
-  'standard',
-  'B',
-  'published',
-  true,
-  0,
-  0,
-  now(),
-  now()
-)
-ON CONFLICT DO NOTHING;
+  public_summary = 'AgriCapital SARL développe un modèle agricole intégré en Côte d''Ivoire — sécurisation foncière, plantations clé en main, suivi agronomique professionnel, garantie d''écoulement — avec une vision long terme de création d''actifs agricoles durables.',
+  description = E'## Présentation stratégique\n\n**AgriCapital SARL** développe un modèle agricole intégré en Côte d''Ivoire — de la sécurisation foncière jusqu''à la plantation clé en main, avec une implantation initiale sur le **palmier à huile**, appelée à s''étendre vers d''autres cultures à forte valeur agronomique et commerciale — avec une vision de création d''actifs agricoles durables sur le long terme.\n\n### Ce que le projet offre\n\n- **Accès à des terres sécurisées** dans des zones productives\n- **Plantations mises en place de A à Z** (clé en main)\n- **Suivi agronomique professionnel** inclus\n- **Garantie d''écoulement** de la production\n- **Fourniture d''intrants premium**\n- **Option de gestion intégrale** sur 28 ans\n- **Impact direct** sur l''emploi local et les communautés rurales\n\n### Actifs opérationnels\n\n- **~120 ha** de pépinière propre en développement actif\n- **~250 ha** de terres identifiées et mobilisables\n- **~500 ha** via le réseau de pépiniéristes partenaires\n- Équipe terrain expérimentée et partenaires techniques structurés\n- Modèle économique structuré et rentable dès la phase de construction\n- Vision long terme : création d''actifs agricoles durables sur **25 ans**\n\n### Phases de développement\n\n| Phase | Horizon |\n|---|---|\n| Court terme | 12 – 18 mois : déploiement de ~200 ha additionnels |\n| Moyen terme | 24 – 36 mois : extension vers 500 à 1 000 ha |\n| Long terme  | Structuration d''un portefeuille de plusieurs milliers d''hectares |\n\n---\n\n## Information Memorandum confidentiel\n\nLes informations stratégiques, financières et opérationnelles détaillées (modèle économique, projections, structure du capital, modalités d''investissement, stratégie de sortie) sont consignées dans le **Information Memorandum (IM) confidentiel** d''AgriCapital.\n\n**L''IM est disponible sur demande, après un premier échange de qualification.**\n\nMerci de manifester votre intérêt via le bouton ci-dessous — notre équipe vous recontactera dans les 48 h.',
+  mp_score = 73,
+  recommendation_level = 'standard',
+  risk_score = 'B',
+  status = 'published',
+  is_public = true,
+  updated_at = now()
+WHERE id = '5cbe6b0a-bfba-49d6-8893-94f1160431d5';
+
+-- 3.3) Équipe AgriCapital (table dédiée projets publics)
+CREATE TABLE IF NOT EXISTS public.project_team (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id uuid NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
+  full_name text NOT NULL,
+  role_title text NOT NULL,
+  bio text,
+  photo_url text,
+  display_order int DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+GRANT SELECT ON public.project_team TO anon, authenticated;
+GRANT ALL ON public.project_team TO service_role;
+ALTER TABLE public.project_team ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can view public project team"
+  ON public.project_team FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Admins manage project team"
+  ON public.project_team FOR ALL TO authenticated
+  USING (public.has_role(auth.uid(),'admin'))
+  WITH CHECK (public.has_role(auth.uid(),'admin'));
+
+INSERT INTO public.project_team (project_id, role_title, full_name, bio, display_order) VALUES
+('5cbe6b0a-bfba-49d6-8893-94f1160431d5','Direction Générale','AgriCapital SARL','Pilotage stratégique interne — structuration, déploiement opérationnel et coordination des partenaires techniques.',1),
+('5cbe6b0a-bfba-49d6-8893-94f1160431d5','Ingénieurs agronomes','Partenaires techniques','Cabinets agronomiques spécialisés assurant le suivi technique des pépinières et plantations.',2),
+('5cbe6b0a-bfba-49d6-8893-94f1160431d5','Cabinet juridique','Partenaire juridique','Structuration contractuelle, conventions foncières long terme et conformité.',3),
+('5cbe6b0a-bfba-49d6-8893-94f1160431d5','Cabinet comptable & fiscal','Partenaire financier','Comptabilité, fiscalité et reporting financier structuré.',4),
+('5cbe6b0a-bfba-49d6-8893-94f1160431d5','Structuration & accompagnement','MIPROJET','Structuration complète, labellisation et accompagnement stratégique du projet.',5);
+
+-- 3.4) Actualité AgriCapital
+INSERT INTO public.project_updates (project_id, title, content) VALUES
+('5cbe6b0a-bfba-49d6-8893-94f1160431d5',
+'MiProjet présente AgriCapital : quand la structuration professionnelle transforme le foncier africain en actif durable',
+E'**AgriCapital SARL** est l''un des projets que MiProjet a accompagnés dans sa structuration complète. Un modèle agricole intégré, une équipe terrain, une vision long terme — voici pourquoi ce projet mérite l''attention des investisseurs, partenaires techniques, souscripteurs et propriétaires fonciers.\n\nMiProjet a accompagné AgriCapital dans la construction d''un modèle agricole rigoureux — de la définition de la stratégie jusqu''à la publication de l''Information Memorandum. Ce travail de structuration a abouti à un projet opérationnel, documenté et prêt à accueillir des partenaires financiers et techniques.\n\n### Le constat de départ\nL''Afrique de l''Ouest dispose d''un potentiel agricole considérable — des terres fertiles, une demande croissante, des filières structurantes comme le palmier à huile. Pourtant, deux écarts persistent : des terres inexploitées faute d''accompagnement, et des capitaux disponibles sans structure d''accueil sérieuse. **AgriCapital comble exactement ces deux écarts.**\n\n### Ce qu''AgriCapital propose concrètement\n- Identification et sécurisation des terres agricoles\n- Mise en place complète de plantations de palmier à huile\n- Suivi agronomique professionnel inclus\n- Fourniture d''intrants premium\n- Garantie d''écoulement de la production\n- Option de gestion intégrale sur 28 ans\n\n### À qui s''adresse ce projet\n**Investisseurs et partenaires stratégiques** — fonds, family offices, diaspora, institutions souhaitant un véhicule d''investissement agricole structuré en Afrique de l''Ouest. *L''Information Memorandum est disponible sur demande.*\n\n**Souscripteurs** — cadres, fonctionnaires, opérateurs économiques souhaitant développer leur propre plantation clé en main sans gérer les aspects techniques. La liste d''attente est ouverte.\n\n**Partenaires techniques** — agronomes, usiniers, acheteurs, fournisseurs d''intrants souhaitant intégrer un écosystème agricole structuré et en croissance.\n\n**Propriétaires fonciers** — propriétaires de terres agricoles souhaitant mettre en valeur leur patrimoine dans le cadre d''un partenariat structuré et professionnel.\n\n### Contact\n📩 invest@ivoireprojet.com\n📞 +225 07 07 16 79 21 · +225 05 05 23 30 05\n🌐 www.agricapital.ci');
 ```
 
-### Branchement automatique côté UI (déjà livré dans cette réponse)
-- `src/lib/scoreTier.ts` — tiers Bronze / Argent / Or / Platine selon le score.
-- `src/components/projects/ScoreBadge.tsx` — badge premium réutilisable (gradient + glow).
-- `PublicProjectCard.tsx` — affiche le nouveau badge en overlay sur la cover.
-- `ProjectDetail.tsx` — header avec logo + score badge tier, bouton "Site officiel" si `website_url`, image de cover dans la carte latérale, nouvel onglet "Galerie" lisant `gallery_urls`, montant masqué si non public.
+---
 
-Aucun code supplémentaire à modifier après exécution du SQL : AgriCapital apparaîtra automatiquement avec le score 73 affiché en argent et toute la vitrine s'auto-câblera.
+## 4) Tout est branché côté UI
+
+- `ProjectDetail` : couverture responsive (desktop / mobile), description rendue en **Markdown professionnel** (titres, gras, listes, tableaux), équipe lue depuis `project_team`, actualités lues depuis `project_updates`, onglet Documents avec message "échange stratégique de qualification" + CTA ouvrant le formulaire d'intérêt.
+- `InvestorInterestDialog` : à la soumission, déclenche la fonction edge `notify-investor-interest` qui envoie automatiquement un email à **invest@ivoireprojet.com** + confirmation au candidat.
+- `mailer.ts` : si Brevo + Resend saturés (400/jour atteint), l'email est automatiquement **mis en file** dans `email_queue` au lieu d'échouer.
+- `process-email-queue` : edge function appelée par cron toutes les 10 min, vide la file dès qu'il reste du quota.
+- `EmailTemplateManager` : nouveau panneau **Média** permettant de coller une URL d'image ou de vidéo, ou d'uploader directement un fichier ; un bloc HTML responsive (img ou vidéo `<video>`) est injecté dans le template.
