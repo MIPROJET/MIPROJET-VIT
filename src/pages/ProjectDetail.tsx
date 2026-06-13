@@ -103,21 +103,25 @@ const ProjectDetail = () => {
   useEffect(() => {
     if (id) {
       fetchProject();
-      fetchUpdates();
-      fetchContributors();
-      fetchEvaluation();
-      fetchTeam();
     }
-
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
     });
   }, [id]);
 
-  const fetchTeam = async () => {
+  // Once the project is resolved (by id OR slug), load related data using the real UUID.
+  useEffect(() => {
+    if (!project?.id) return;
+    fetchUpdates(project.id);
+    fetchContributors(project.id);
+    fetchEvaluation(project.id);
+    fetchTeam(project.id);
+  }, [project?.id]);
+
+  const fetchTeam = async (pid: string) => {
     try {
       const { data } = await (supabase as any)
-        .from("project_team").select("*").eq("project_id", id).order("display_order", { ascending: true });
+        .from("project_team").select("*").eq("project_id", pid).order("display_order", { ascending: true });
       setTeam(data || []);
     } catch (e) { console.error("team fetch", e); }
   };
