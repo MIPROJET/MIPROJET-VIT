@@ -419,6 +419,72 @@ export type Database = {
         }
         Relationships: []
       }
+      email_queue: {
+        Row: {
+          attempts: number
+          bypass_unsubscribe_check: boolean | null
+          campaign_id: string | null
+          created_at: string
+          from_address: string | null
+          html: string
+          id: string
+          kind: string | null
+          last_error: string | null
+          recipient_user_id: string | null
+          reply_to: string | null
+          scheduled_for: string
+          sent_at: string | null
+          status: string
+          subject: string
+          text_content: string | null
+          to_email: string
+          unsubscribe_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          bypass_unsubscribe_check?: boolean | null
+          campaign_id?: string | null
+          created_at?: string
+          from_address?: string | null
+          html: string
+          id?: string
+          kind?: string | null
+          last_error?: string | null
+          recipient_user_id?: string | null
+          reply_to?: string | null
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: string
+          subject: string
+          text_content?: string | null
+          to_email: string
+          unsubscribe_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          bypass_unsubscribe_check?: boolean | null
+          campaign_id?: string | null
+          created_at?: string
+          from_address?: string | null
+          html?: string
+          id?: string
+          kind?: string | null
+          last_error?: string | null
+          recipient_user_id?: string | null
+          reply_to?: string | null
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: string
+          subject?: string
+          text_content?: string | null
+          to_email?: string
+          unsubscribe_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       email_templates: {
         Row: {
           created_at: string
@@ -2363,6 +2429,54 @@ export type Database = {
           },
         ]
       }
+      project_team: {
+        Row: {
+          bio: string | null
+          created_at: string
+          display_order: number | null
+          full_name: string
+          id: string
+          photo_url: string | null
+          project_id: string
+          role_title: string
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string
+          display_order?: number | null
+          full_name: string
+          id?: string
+          photo_url?: string | null
+          project_id: string
+          role_title: string
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string
+          display_order?: number | null
+          full_name?: string
+          id?: string
+          photo_url?: string | null
+          project_id?: string
+          role_title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_team_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_team_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "public_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_updates: {
         Row: {
           author_id: string | null
@@ -2412,6 +2526,7 @@ export type Database = {
           city: string | null
           country: string | null
           cover_url: string | null
+          cover_url_mobile: string | null
           created_at: string
           currency: string | null
           current_funding: number | null
@@ -2437,6 +2552,7 @@ export type Database = {
           sector: string | null
           short_slug: string | null
           status: string | null
+          tagline: string | null
           title: string
           updated_at: string
           website_url: string | null
@@ -2447,6 +2563,7 @@ export type Database = {
           city?: string | null
           country?: string | null
           cover_url?: string | null
+          cover_url_mobile?: string | null
           created_at?: string
           currency?: string | null
           current_funding?: number | null
@@ -2472,6 +2589,7 @@ export type Database = {
           sector?: string | null
           short_slug?: string | null
           status?: string | null
+          tagline?: string | null
           title: string
           updated_at?: string
           website_url?: string | null
@@ -2482,6 +2600,7 @@ export type Database = {
           city?: string | null
           country?: string | null
           cover_url?: string | null
+          cover_url_mobile?: string | null
           created_at?: string
           currency?: string | null
           current_funding?: number | null
@@ -2507,6 +2626,7 @@ export type Database = {
           sector?: string | null
           short_slug?: string | null
           status?: string | null
+          tagline?: string | null
           title?: string
           updated_at?: string
           website_url?: string | null
