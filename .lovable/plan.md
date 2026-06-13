@@ -170,3 +170,130 @@ E'**AgriCapital SARL** est l''un des projets que MiProjet a accompagnés dans sa
 - `mailer.ts` : si Brevo + Resend saturés (400/jour atteint), l'email est automatiquement **mis en file** dans `email_queue` au lieu d'échouer.
 - `process-email-queue` : edge function appelée par cron toutes les 10 min, vide la file dès qu'il reste du quota.
 - `EmailTemplateManager` : nouveau panneau **Média** permettant de coller une URL d'image ou de vidéo, ou d'uploader directement un fichier ; un bloc HTML responsive (img ou vidéo `<video>`) est injecté dans le template.
+
+---
+
+# LOT 4 (correctifs urgents) — à exécuter
+
+## 4.1) AgriCapital — description sans `## Présentation stratégique`, table propre, équipe fixée
+
+```sql
+-- Description : commence directement par "AgriCapital SARL…", retire le sous-titre Markdown
+UPDATE public.projects SET
+  description = E'**AgriCapital SARL** développe un modèle agricole intégré en Côte d''Ivoire — de la sécurisation foncière jusqu''à la plantation clé en main, avec une implantation initiale sur le **palmier à huile**, appelée à s''étendre vers d''autres cultures à forte valeur agronomique et commerciale — avec une vision de création d''actifs agricoles durables sur le long terme.\n\n## Ce que le projet offre\n\n- **Accès à des terres sécurisées** dans des zones productives\n- **Plantations mises en place de A à Z** (clé en main)\n- **Suivi agronomique professionnel** inclus\n- **Garantie d''écoulement** de la production\n- **Fourniture d''intrants premium**\n- **Option de gestion intégrale** sur 28 ans\n- **Impact direct** sur l''emploi local et les communautés rurales\n\n## Actifs opérationnels\n\n- **~120 ha** de pépinière propre en développement actif\n- **~250 ha** de terres identifiées et mobilisables\n- **~500 ha** via le réseau de pépiniéristes partenaires\n- Équipe terrain expérimentée et partenaires techniques structurés\n- Modèle économique structuré et rentable dès la phase de construction\n- Vision long terme : création d''actifs agricoles durables sur **25 ans**\n\n## Phases de développement\n\n| Phase | Horizon |\n| --- | --- |\n| Court terme | 12 – 18 mois — déploiement de ~200 ha additionnels |\n| Moyen terme | 24 – 36 mois — extension vers 500 à 1 000 ha |\n| Long terme  | Structuration d''un portefeuille de plusieurs milliers d''hectares |\n\n---\n\n## Information Memorandum confidentiel\n\nLes informations stratégiques, financières et opérationnelles détaillées (modèle économique, projections, structure du capital, modalités d''investissement, stratégie de sortie) sont consignées dans le **Information Memorandum (IM) confidentiel** d''AgriCapital.\n\n**L''IM est disponible sur demande, après un premier échange de qualification.**\n\nMerci de manifester votre intérêt via le bouton ci-dessous — notre équipe vous recontactera dans les 48 h.',
+  public_summary = 'AgriCapital SARL développe un modèle agricole intégré en Côte d''Ivoire — sécurisation foncière, plantations clé en main, suivi agronomique professionnel, garantie d''écoulement — avec une vision long terme de création d''actifs agricoles durables.',
+  updated_at = now()
+WHERE id = '5cbe6b0a-bfba-49d6-8893-94f1160431d5';
+
+-- Équipe : corrige la formulation "Expert agronome spécialisés"
+UPDATE public.project_team
+SET bio = 'Cabinets agronomiques spécialisés assurant le suivi technique des pépinières et plantations.'
+WHERE project_id = '5cbe6b0a-bfba-49d6-8893-94f1160431d5'
+  AND role_title = 'Ingénieurs agronomes';
+```
+
+## 4.2) Routes courtes `/projects/<slug>`
+
+L'UI accepte déjà `/projects/agricapital`, `/projects/<short_slug>` ou `/projects/<uuid>`. Pour pré-remplir un slug stable on peut ajouter une colonne :
+
+```sql
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS slug text UNIQUE;
+
+-- Backfill : pour chaque projet publié sans slug, générer un slug propre depuis le titre
+UPDATE public.projects
+SET slug = regexp_replace(
+  lower(unaccent(title)),
+  '[^a-z0-9]+', '-', 'g'
+)
+WHERE slug IS NULL AND title IS NOT NULL;
+
+-- Cas AgriCapital : forcer "agricapital"
+UPDATE public.projects SET slug = 'agricapital'
+WHERE id = '5cbe6b0a-bfba-49d6-8893-94f1160431d5';
+```
+
+> Nécessite l'extension `unaccent` : `CREATE EXTENSION IF NOT EXISTS unaccent;`
+
+## 4.3) Newsletter — déclencher automatiquement la suite après import
+
+Après l'import (section 1), pour que les nouveaux abonnés reçoivent immédiatement la dernière campagne (en respectant le quota) :
+
+```sql
+-- Met en file la dernière campagne envoyée vers tous les abonnés qui ne l'ont pas reçue
+WITH last_campaign AS (
+  SELECT id, subject, html_content
+  FROM public.email_campaigns
+  WHERE status = 'sent'
+  ORDER BY sent_at DESC NULLS LAST, created_at DESC
+  LIMIT 1
+)
+INSERT INTO public.email_queue (to_email, subject, html, kind, campaign_id, scheduled_for)
+SELECT s.email, lc.subject, lc.html_content, 'newsletter_resync', lc.id, now()
+FROM public.newsletter_subscribers s
+CROSS JOIN last_campaign lc
+WHERE s.is_active = true
+  AND NOT EXISTS (
+    SELECT 1 FROM public.email_logs el
+    WHERE el.recipient_email = s.email AND el.campaign_id = lc.id AND el.status IN ('sent','delivered')
+  );
+```
+
+Le cron `process-email-queue-job` (section 2) draine ensuite la file en respectant le quota 300 Brevo + 100 Resend / jour. Tant que le quota n'est pas atteint, les envois partent en continu ; sinon, ils sont automatiquement reportés au lendemain.
+
+## 4.4) LOT 2 — Profils entités (squelette SQL à valider)
+
+```sql
+-- Table des entités publiques (entreprises, coopératives, ONG, institutions…)
+CREATE TABLE IF NOT EXISTS public.entities (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug text UNIQUE NOT NULL,
+  name text NOT NULL,
+  legal_form text,
+  entity_type text CHECK (entity_type IN ('enterprise','cooperative','ngo','institution','funder')),
+  tagline text,
+  description text,
+  logo_url text,
+  cover_url text,
+  cover_url_mobile text,
+  website_url text,
+  country text,
+  city text,
+  sector text,
+  founded_year int,
+  team_size text,
+  contact_email text,
+  contact_phone text,
+  socials jsonb DEFAULT '{}'::jsonb,
+  gallery_urls text[] DEFAULT '{}',
+  is_public boolean DEFAULT true,
+  mp_score int,
+  recommendation_level text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+GRANT SELECT ON public.entities TO anon, authenticated;
+GRANT ALL ON public.entities TO service_role;
+ALTER TABLE public.entities ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone reads public entities" ON public.entities FOR SELECT TO anon, authenticated USING (is_public = true);
+CREATE POLICY "Admins manage entities" ON public.entities FOR ALL TO authenticated
+  USING (public.has_role(auth.uid(),'admin')) WITH CHECK (public.has_role(auth.uid(),'admin'));
+CREATE TRIGGER trg_entities_updated_at BEFORE UPDATE ON public.entities
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+-- Réutilise project_team / project_updates pour les actualités/équipes des entités
+-- (en attendant le sous-lot UI dédié)
+```
+
+---
+
+## ✅ Côté UI — déjà branché dans ce lot
+
+- **Routes** : `/projects/agricapital`, `/projects/<short_slug>` et `/projects/<uuid>` fonctionnent (résolution automatique).
+- **Carte projet** : aperçu nettoyé (plus de `##`, `**…**` visibles) via `stripMarkdown`.
+- **Hero** : badges traduits en français (Vérifié MIPROJET, Financé, Investisseurs, Jours restants, Investir maintenant, Partager).
+- **Description** : titres avec barre primaire à gauche, paragraphes aérés, **tableaux rendus comme dans Word** (en-tête en gras, lignes alternées, bordures arrondies).
+- **Galerie** : grille responsive avec lien plein écran.
+- **Données** : tableau Word-like épuré (12 lignes max), sans répétition de la description.
+- **Équipe / Actualités** : restent branchés sur `project_team` et `project_updates` (designs déjà pro et modernes via MarkdownView v2).
+- **Email Media Inserter** : (déjà livré au LOT 3) — image **ou** vidéo, upload **ou** URL, optimisation automatique via Supabase Storage.
+
