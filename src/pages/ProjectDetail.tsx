@@ -216,8 +216,8 @@ const ProjectDetail = () => {
   const handleInvest = () => {
     if (!user) {
       toast({
-        title: t('auth.required'),
-        description: t('auth.loginToInvest') || "Connectez-vous pour investir",
+        title: "Connexion requise",
+        description: "Connectez-vous pour investir",
         variant: "destructive",
       });
       navigate('/auth');
@@ -243,10 +243,10 @@ const ProjectDetail = () => {
       <div className="min-h-screen bg-background">
         <Navigation />
         <div className="container mx-auto px-4 pt-28 md:pt-32 pb-16 text-center">
-          <h1 className="text-2xl font-bold mb-4">{t('projects.notFound') || "Projet non trouvé"}</h1>
+          <h1 className="text-2xl font-bold mb-4">Projet non trouvé</h1>
           <Button onClick={() => navigate('/projects')}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            {t('common.back') || "Retour aux projets"}
+            Retour aux projets
           </Button>
         </div>
         <Footer />
@@ -280,7 +280,7 @@ const ProjectDetail = () => {
               onClick={() => navigate('/projects')}
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
-              {t('common.back') || "Retour"}
+              Retour
             </Button>
             
             <div className="grid lg:grid-cols-2 gap-8">
@@ -303,7 +303,7 @@ const ProjectDetail = () => {
                   )}
                   <Badge variant="outline" className="text-primary-foreground border-primary-foreground/30">
                     <Shield className="h-3 w-3 mr-1" />
-                    {t('projects.verified') || "Vérifié MIPROJET"}
+                    Vérifié MIPROJET
                   </Badge>
                 </div>
                 
@@ -343,7 +343,7 @@ const ProjectDetail = () => {
                   )}
                   <Button variant="outline" size="lg" className="bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground">
                     <Share2 className="mr-2 h-4 w-4" />
-                    {t('common.share') || "Partager"}
+                    Partager
                   </Button>
                 </div>
               </div>
@@ -385,20 +385,20 @@ const ProjectDetail = () => {
                   <div className="grid grid-cols-3 gap-4 text-center">
                     <div>
                       <p className="text-2xl font-bold">{progressPercent.toFixed(0)}%</p>
-                      <p className="text-sm text-muted-foreground">{t('projects.funded') || "Financé"}</p>
+                      <p className="text-sm text-muted-foreground">Financé</p>
                     </div>
                     <div>
                       <p className="text-2xl font-bold">{contributorsCount}</p>
-                      <p className="text-sm text-muted-foreground">{t('projects.investors') || "Investisseurs"}</p>
+                      <p className="text-sm text-muted-foreground">Investisseurs</p>
                     </div>
                     <div>
                       <p className="text-2xl font-bold">{daysRemaining}</p>
-                      <p className="text-sm text-muted-foreground">{t('projects.daysLeft') || "Jours restants"}</p>
+                      <p className="text-sm text-muted-foreground">Jours restants</p>
                     </div>
                   </div>
 
                   <Button className="w-full mt-6" size="lg" onClick={handleInvest}>
-                    {t('projects.investNow') || "Investir maintenant"}
+                    Investir maintenant
                   </Button>
                 </CardContent>
               </Card>
