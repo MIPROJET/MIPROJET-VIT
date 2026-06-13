@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { MapPin, TrendingUp, Award, ArrowUpRight, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import { ScoreBadge } from "@/components/projects/ScoreBadge";
+import { stripMarkdown, slugify } from "@/lib/textUtils";
 
 export interface PublicProject {
   id: string;
