@@ -22,6 +22,7 @@ import { InvestorInterestDialog } from "@/components/projects/InvestorInterestDi
 import { interpretScore, getMaturityLevel, EVALUATION_AXES } from "@/lib/evaluation";
 import { ScoreBadge } from "@/components/projects/ScoreBadge";
 import { MarkdownView } from "@/components/ui/markdown-view";
+import { stripMarkdown } from "@/lib/textUtils";
 
 interface TeamMember { id: string; full_name: string; role_title: string; bio?: string | null; photo_url?: string | null; display_order?: number | null; }
 
