@@ -170,12 +170,12 @@ const ProjectDetail = () => {
     }
   };
 
-  const fetchUpdates = async () => {
+  const fetchUpdates = async (pid: string) => {
     try {
       const { data } = await (supabase
         .from('project_updates')
         .select('*')
-        .eq('project_id', id)
+        .eq('project_id', pid)
         .order('created_at', { ascending: false }) as any);
 
       setUpdates(data || []);
@@ -184,12 +184,12 @@ const ProjectDetail = () => {
     }
   };
 
-  const fetchEvaluation = async () => {
+  const fetchEvaluation = async (pid: string) => {
     try {
       const { data } = await (supabase
         .from("project_evaluations")
         .select("*")
-        .eq("project_id", id)
+        .eq("project_id", pid)
         .eq("is_active", true)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -200,12 +200,12 @@ const ProjectDetail = () => {
     }
   };
 
-  const fetchContributors = async () => {
+  const fetchContributors = async (pid: string) => {
     try {
       const { count } = await supabase
         .from('contributions')
         .select('*', { count: 'exact', head: true })
-        .eq('project_id', id);
+        .eq('project_id', pid);
 
       setContributorsCount(count || 0);
     } catch (error) {
