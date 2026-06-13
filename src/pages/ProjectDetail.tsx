@@ -311,8 +311,9 @@ const ProjectDetail = () => {
                 <h1 className="text-4xl font-bold text-primary-foreground mb-4">{project.title}</h1>
                 
                 <p className="text-primary-foreground/90 text-lg mb-4 max-w-2xl">
-                  {project.public_summary || project.description?.slice(0, 220)}
+                  {stripMarkdown(project.public_summary || project.description, 240)}
                 </p>
+
 
                 <div className="flex items-center gap-4 text-primary-foreground/80 mb-6 flex-wrap text-sm">
                   {(project.city || project.country) && (
