@@ -556,58 +556,44 @@ const ProjectDetail = () => {
                 )}
               </TabsContent>
 
-              {/* MODULE 1 — Onglet Données d'évaluation détaillées (100% des données) */}
+              {/* Onglet Données — vue épurée façon tableau Word */}
               <TabsContent value="details" className="mt-6">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2"><ClipboardList className="h-5 w-5" />Données d'évaluation détaillées</CardTitle>
                     <CardDescription>Toutes les réponses et données saisies pour ce projet (mode lecture complète).</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4 text-sm">
-                    <div className="grid md:grid-cols-2 gap-3">
-                      <div><p className="text-muted-foreground text-xs">ID Projet</p><p className="font-mono font-semibold">{formatProjectDisplayId(project.display_id, project.id)}</p></div>
-                      <div><p className="text-muted-foreground text-xs">Titre</p><p className="font-medium">{project.title}</p></div>
-                      <div><p className="text-muted-foreground text-xs">Catégorie</p><p>{project.category || "—"}</p></div>
-                      <div><p className="text-muted-foreground text-xs">Secteur</p><p>{project.sector || "—"}</p></div>
-                      <div><p className="text-muted-foreground text-xs">Pays</p><p>{project.country || "—"}</p></div>
-                      <div><p className="text-muted-foreground text-xs">Ville</p><p>{project.city || "—"}</p></div>
-                      <div><p className="text-muted-foreground text-xs">Objectif de financement</p><p>{project.funding_goal?.toLocaleString() || 0} FCFA</p></div>
-                      <div><p className="text-muted-foreground text-xs">Fonds levés</p><p>{project.funds_raised?.toLocaleString() || 0} FCFA</p></div>
-                      <div><p className="text-muted-foreground text-xs">Fonds disponibles porteur</p><p>{project.fonds_disponibles || "—"}</p></div>
-                      <div><p className="text-muted-foreground text-xs">Statut</p><p>{project.status}</p></div>
-                      <div><p className="text-muted-foreground text-xs">Score risque</p><p>{project.risk_score || "—"}</p></div>
-                      <div><p className="text-muted-foreground text-xs">Date création</p><p>{new Date(project.created_at).toLocaleString('fr-FR')}</p></div>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground text-xs mb-1">Description complète</p>
-                      <div className="bg-muted/30 rounded p-3 whitespace-pre-wrap">{project.description || "—"}</div>
-                    </div>
-                    {evaluation?.answers && Object.keys(evaluation.answers).length > 0 && (
-                      <div>
-                        <p className="text-muted-foreground text-xs mb-2 mt-4">Réponses détaillées d'évaluation ({Object.keys(evaluation.answers).length} réponses)</p>
-                        <div className="bg-muted/30 rounded p-3 space-y-2">
-                          {Object.entries(evaluation.answers).map(([k, v]) => (
-                            <div key={k} className="border-b border-border/50 pb-2 last:border-0">
-                              <p className="font-medium text-xs text-muted-foreground">{k}</p>
-                              <p className="break-words">{typeof v === "object" ? JSON.stringify(v) : String(v)}</p>
-                            </div>
+                  <CardContent className="p-0">
+                    <div className="overflow-hidden rounded-b-lg border-t border-border">
+                      <table className="w-full text-sm">
+                        <tbody>
+                          {[
+                            ["ID Projet", <span className="font-mono font-semibold">{formatProjectDisplayId(project.display_id, project.id)}</span>],
+                            ["Titre", project.title],
+                            ["Catégorie", project.category || "—"],
+                            ["Secteur", project.sector || "—"],
+                            ["Pays", project.country || "—"],
+                            ["Ville", project.city || "—"],
+                            ["Objectif de financement", `${(project.funding_goal ?? 0).toLocaleString('fr-FR')} FCFA`],
+                            ["Fonds levés", `${(project.funds_raised ?? 0).toLocaleString('fr-FR')} FCFA`],
+                            ["Fonds disponibles porteur", project.fonds_disponibles || "—"],
+                            ["Statut", project.status],
+                            ["Score risque", project.risk_score || "—"],
+                            ["Date publication", new Date(project.created_at).toLocaleString('fr-FR')],
+                          ].map(([label, value], i) => (
+                            <tr key={i} className="odd:bg-background even:bg-muted/30 border-b border-border/60 last:border-0">
+                              <th className="text-left font-bold text-foreground px-4 py-3 w-1/3 align-top whitespace-nowrap">{label}</th>
+                              <td className="px-4 py-3 align-top">{value as any}</td>
+                            </tr>
                           ))}
-                        </div>
-                      </div>
-                    )}
-                    {project.documents && Array.isArray(project.documents) && project.documents.length > 0 && (
-                      <div>
-                        <p className="text-muted-foreground text-xs mb-2 mt-4">Documents joints ({project.documents.length})</p>
-                        <ul className="space-y-1">
-                          {project.documents.map((d: any, i: number) => (
-                            <li key={i} className="flex items-center gap-2"><FileText className="h-4 w-4" /><span>{d.name || d.title || `Document ${i + 1}`}</span></li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
+                        </tbody>
+                      </table>
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
+
+
 
               <TabsContent value="updates" className="mt-6 space-y-4">
                 {updates.length > 0 ? (
