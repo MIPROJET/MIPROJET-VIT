@@ -124,18 +124,40 @@ const ProjectDetail = () => {
 
   const fetchProject = async () => {
     try {
-      const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('id', id)
-        .maybeSingle();
-
-      if (error) throw error;
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id || "");
+      let data: any = null;
+      if (isUuid) {
+        const r = await supabase.from("projects").select("*").eq("id", id).maybeSingle();
+        data = r.data;
+      } else {
+        // Resolve by short_slug first, then by title slug fallback
+        const r1 = await supabase.from("projects").select("*").eq("short_slug", id).maybeSingle();
+        data = r1.data;
+        if (!data) {
+          // Fallback: scan published projects and match slugified title
+          const { data: list } = await supabase
+            .from("projects")
+            .select("*")
+            .eq("is_public", true)
+            .eq("status", "published")
+            .limit(500);
+          const target = (id || "").toLowerCase();
+          data = (list || []).find((p: any) => {
+            const s = (p.title || "")
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/^-+|-+$/g, "");
+            return s === target || s.startsWith(target);
+          }) || null;
+        }
+      }
       setProject(data);
     } catch (error) {
       console.error('Error fetching project:', error);
       toast({
-        title: t('common.error'),
+        title: "Erreur",
         description: "Impossible de charger le projet",
         variant: "destructive",
       });
