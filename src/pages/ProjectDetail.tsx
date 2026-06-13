@@ -22,6 +22,7 @@ import { InvestorInterestDialog } from "@/components/projects/InvestorInterestDi
 import { interpretScore, getMaturityLevel, EVALUATION_AXES } from "@/lib/evaluation";
 import { ScoreBadge } from "@/components/projects/ScoreBadge";
 import { MarkdownView } from "@/components/ui/markdown-view";
+import { stripMarkdown } from "@/lib/textUtils";
 
 interface TeamMember { id: string; full_name: string; role_title: string; bio?: string | null; photo_url?: string | null; display_order?: number | null; }
 
@@ -103,39 +104,65 @@ const ProjectDetail = () => {
   useEffect(() => {
     if (id) {
       fetchProject();
-      fetchUpdates();
-      fetchContributors();
-      fetchEvaluation();
-      fetchTeam();
     }
-
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
     });
   }, [id]);
 
-  const fetchTeam = async () => {
+  // Once the project is resolved (by id OR slug), load related data using the real UUID.
+  useEffect(() => {
+    if (!project?.id) return;
+    fetchUpdates(project.id);
+    fetchContributors(project.id);
+    fetchEvaluation(project.id);
+    fetchTeam(project.id);
+  }, [project?.id]);
+
+  const fetchTeam = async (pid: string) => {
     try {
       const { data } = await (supabase as any)
-        .from("project_team").select("*").eq("project_id", id).order("display_order", { ascending: true });
+        .from("project_team").select("*").eq("project_id", pid).order("display_order", { ascending: true });
       setTeam(data || []);
     } catch (e) { console.error("team fetch", e); }
   };
 
   const fetchProject = async () => {
     try {
-      const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('id', id)
-        .maybeSingle();
-
-      if (error) throw error;
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id || "");
+      let data: any = null;
+      if (isUuid) {
+        const r = await supabase.from("projects").select("*").eq("id", id).maybeSingle();
+        data = r.data;
+      } else {
+        // Resolve by short_slug first, then by title slug fallback
+        const r1 = await supabase.from("projects").select("*").eq("short_slug", id).maybeSingle();
+        data = r1.data;
+        if (!data) {
+          // Fallback: scan published projects and match slugified title
+          const { data: list } = await supabase
+            .from("projects")
+            .select("*")
+            .eq("is_public", true)
+            .eq("status", "published")
+            .limit(500);
+          const target = (id || "").toLowerCase();
+          data = (list || []).find((p: any) => {
+            const s = (p.title || "")
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/^-+|-+$/g, "");
+            return s === target || s.startsWith(target);
+          }) || null;
+        }
+      }
       setProject(data);
     } catch (error) {
       console.error('Error fetching project:', error);
       toast({
-        title: t('common.error'),
+        title: "Erreur",
         description: "Impossible de charger le projet",
         variant: "destructive",
       });
@@ -144,12 +171,12 @@ const ProjectDetail = () => {
     }
   };
 
-  const fetchUpdates = async () => {
+  const fetchUpdates = async (pid: string) => {
     try {
       const { data } = await (supabase
         .from('project_updates')
         .select('*')
-        .eq('project_id', id)
+        .eq('project_id', pid)
         .order('created_at', { ascending: false }) as any);
 
       setUpdates(data || []);
@@ -158,12 +185,12 @@ const ProjectDetail = () => {
     }
   };
 
-  const fetchEvaluation = async () => {
+  const fetchEvaluation = async (pid: string) => {
     try {
       const { data } = await (supabase
         .from("project_evaluations")
         .select("*")
-        .eq("project_id", id)
+        .eq("project_id", pid)
         .eq("is_active", true)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -174,12 +201,12 @@ const ProjectDetail = () => {
     }
   };
 
-  const fetchContributors = async () => {
+  const fetchContributors = async (pid: string) => {
     try {
       const { count } = await supabase
         .from('contributions')
         .select('*', { count: 'exact', head: true })
-        .eq('project_id', id);
+        .eq('project_id', pid);
 
       setContributorsCount(count || 0);
     } catch (error) {
@@ -190,8 +217,8 @@ const ProjectDetail = () => {
   const handleInvest = () => {
     if (!user) {
       toast({
-        title: t('auth.required'),
-        description: t('auth.loginToInvest') || "Connectez-vous pour investir",
+        title: "Connexion requise",
+        description: "Connectez-vous pour investir",
         variant: "destructive",
       });
       navigate('/auth');
@@ -217,10 +244,10 @@ const ProjectDetail = () => {
       <div className="min-h-screen bg-background">
         <Navigation />
         <div className="container mx-auto px-4 pt-28 md:pt-32 pb-16 text-center">
-          <h1 className="text-2xl font-bold mb-4">{t('projects.notFound') || "Projet non trouvé"}</h1>
+          <h1 className="text-2xl font-bold mb-4">Projet non trouvé</h1>
           <Button onClick={() => navigate('/projects')}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            {t('common.back') || "Retour aux projets"}
+            Retour aux projets
           </Button>
         </div>
         <Footer />
@@ -254,7 +281,7 @@ const ProjectDetail = () => {
               onClick={() => navigate('/projects')}
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
-              {t('common.back') || "Retour"}
+              Retour
             </Button>
             
             <div className="grid lg:grid-cols-2 gap-8">
@@ -277,15 +304,16 @@ const ProjectDetail = () => {
                   )}
                   <Badge variant="outline" className="text-primary-foreground border-primary-foreground/30">
                     <Shield className="h-3 w-3 mr-1" />
-                    {t('projects.verified') || "Vérifié MIPROJET"}
+                    Vérifié MIPROJET
                   </Badge>
                 </div>
                 
                 <h1 className="text-4xl font-bold text-primary-foreground mb-4">{project.title}</h1>
                 
                 <p className="text-primary-foreground/90 text-lg mb-4 max-w-2xl">
-                  {project.public_summary || project.description?.slice(0, 220)}
+                  {stripMarkdown(project.public_summary || project.description, 240)}
                 </p>
+
 
                 <div className="flex items-center gap-4 text-primary-foreground/80 mb-6 flex-wrap text-sm">
                   {(project.city || project.country) && (
@@ -317,7 +345,7 @@ const ProjectDetail = () => {
                   )}
                   <Button variant="outline" size="lg" className="bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground">
                     <Share2 className="mr-2 h-4 w-4" />
-                    {t('common.share') || "Partager"}
+                    Partager
                   </Button>
                 </div>
               </div>
@@ -359,20 +387,20 @@ const ProjectDetail = () => {
                   <div className="grid grid-cols-3 gap-4 text-center">
                     <div>
                       <p className="text-2xl font-bold">{progressPercent.toFixed(0)}%</p>
-                      <p className="text-sm text-muted-foreground">{t('projects.funded') || "Financé"}</p>
+                      <p className="text-sm text-muted-foreground">Financé</p>
                     </div>
                     <div>
                       <p className="text-2xl font-bold">{contributorsCount}</p>
-                      <p className="text-sm text-muted-foreground">{t('projects.investors') || "Investisseurs"}</p>
+                      <p className="text-sm text-muted-foreground">Investisseurs</p>
                     </div>
                     <div>
                       <p className="text-2xl font-bold">{daysRemaining}</p>
-                      <p className="text-sm text-muted-foreground">{t('projects.daysLeft') || "Jours restants"}</p>
+                      <p className="text-sm text-muted-foreground">Jours restants</p>
                     </div>
                   </div>
 
                   <Button className="w-full mt-6" size="lg" onClick={handleInvest}>
-                    {t('projects.investNow') || "Investir maintenant"}
+                    Investir maintenant
                   </Button>
                 </CardContent>
               </Card>
@@ -528,58 +556,44 @@ const ProjectDetail = () => {
                 )}
               </TabsContent>
 
-              {/* MODULE 1 — Onglet Données d'évaluation détaillées (100% des données) */}
+              {/* Onglet Données — vue épurée façon tableau Word */}
               <TabsContent value="details" className="mt-6">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2"><ClipboardList className="h-5 w-5" />Données d'évaluation détaillées</CardTitle>
                     <CardDescription>Toutes les réponses et données saisies pour ce projet (mode lecture complète).</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4 text-sm">
-                    <div className="grid md:grid-cols-2 gap-3">
-                      <div><p className="text-muted-foreground text-xs">ID Projet</p><p className="font-mono font-semibold">{formatProjectDisplayId(project.display_id, project.id)}</p></div>
-                      <div><p className="text-muted-foreground text-xs">Titre</p><p className="font-medium">{project.title}</p></div>
-                      <div><p className="text-muted-foreground text-xs">Catégorie</p><p>{project.category || "—"}</p></div>
-                      <div><p className="text-muted-foreground text-xs">Secteur</p><p>{project.sector || "—"}</p></div>
-                      <div><p className="text-muted-foreground text-xs">Pays</p><p>{project.country || "—"}</p></div>
-                      <div><p className="text-muted-foreground text-xs">Ville</p><p>{project.city || "—"}</p></div>
-                      <div><p className="text-muted-foreground text-xs">Objectif de financement</p><p>{project.funding_goal?.toLocaleString() || 0} FCFA</p></div>
-                      <div><p className="text-muted-foreground text-xs">Fonds levés</p><p>{project.funds_raised?.toLocaleString() || 0} FCFA</p></div>
-                      <div><p className="text-muted-foreground text-xs">Fonds disponibles porteur</p><p>{project.fonds_disponibles || "—"}</p></div>
-                      <div><p className="text-muted-foreground text-xs">Statut</p><p>{project.status}</p></div>
-                      <div><p className="text-muted-foreground text-xs">Score risque</p><p>{project.risk_score || "—"}</p></div>
-                      <div><p className="text-muted-foreground text-xs">Date création</p><p>{new Date(project.created_at).toLocaleString('fr-FR')}</p></div>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground text-xs mb-1">Description complète</p>
-                      <div className="bg-muted/30 rounded p-3 whitespace-pre-wrap">{project.description || "—"}</div>
-                    </div>
-                    {evaluation?.answers && Object.keys(evaluation.answers).length > 0 && (
-                      <div>
-                        <p className="text-muted-foreground text-xs mb-2 mt-4">Réponses détaillées d'évaluation ({Object.keys(evaluation.answers).length} réponses)</p>
-                        <div className="bg-muted/30 rounded p-3 space-y-2">
-                          {Object.entries(evaluation.answers).map(([k, v]) => (
-                            <div key={k} className="border-b border-border/50 pb-2 last:border-0">
-                              <p className="font-medium text-xs text-muted-foreground">{k}</p>
-                              <p className="break-words">{typeof v === "object" ? JSON.stringify(v) : String(v)}</p>
-                            </div>
+                  <CardContent className="p-0">
+                    <div className="overflow-hidden rounded-b-lg border-t border-border">
+                      <table className="w-full text-sm">
+                        <tbody>
+                          {[
+                            ["ID Projet", <span className="font-mono font-semibold">{formatProjectDisplayId(project.display_id, project.id)}</span>],
+                            ["Titre", project.title],
+                            ["Catégorie", project.category || "—"],
+                            ["Secteur", project.sector || "—"],
+                            ["Pays", project.country || "—"],
+                            ["Ville", project.city || "—"],
+                            ["Objectif de financement", `${(project.funding_goal ?? 0).toLocaleString('fr-FR')} FCFA`],
+                            ["Fonds levés", `${(project.funds_raised ?? 0).toLocaleString('fr-FR')} FCFA`],
+                            ["Fonds disponibles porteur", project.fonds_disponibles || "—"],
+                            ["Statut", project.status],
+                            ["Score risque", project.risk_score || "—"],
+                            ["Date publication", new Date(project.created_at).toLocaleString('fr-FR')],
+                          ].map(([label, value], i) => (
+                            <tr key={i} className="odd:bg-background even:bg-muted/30 border-b border-border/60 last:border-0">
+                              <th className="text-left font-bold text-foreground px-4 py-3 w-1/3 align-top whitespace-nowrap">{label}</th>
+                              <td className="px-4 py-3 align-top">{value as any}</td>
+                            </tr>
                           ))}
-                        </div>
-                      </div>
-                    )}
-                    {project.documents && Array.isArray(project.documents) && project.documents.length > 0 && (
-                      <div>
-                        <p className="text-muted-foreground text-xs mb-2 mt-4">Documents joints ({project.documents.length})</p>
-                        <ul className="space-y-1">
-                          {project.documents.map((d: any, i: number) => (
-                            <li key={i} className="flex items-center gap-2"><FileText className="h-4 w-4" /><span>{d.name || d.title || `Document ${i + 1}`}</span></li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
+                        </tbody>
+                      </table>
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
+
+
 
               <TabsContent value="updates" className="mt-6 space-y-4">
                 {updates.length > 0 ? (

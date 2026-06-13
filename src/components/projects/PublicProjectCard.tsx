@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { MapPin, TrendingUp, Award, ArrowUpRight, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import { ScoreBadge } from "@/components/projects/ScoreBadge";
+import { stripMarkdown, slugify } from "@/lib/textUtils";
 
 export interface PublicProject {
   id: string;
@@ -36,15 +37,18 @@ const formatAmount = (n?: number | null, currency = "XOF") => {
 
 export const PublicProjectCard = ({ project }: { project: PublicProject }) => {
   const cover = project.cover_url || project.image_url || project.logo_url;
-  const summary =
+  const summary = stripMarkdown(
     project.public_summary ||
-    project.description ||
-    `Projet ${project.sector ? `dans le secteur ${project.sector}` : "à fort potentiel"}${
-      project.country ? ` basé en ${project.country}` : ""
-    }. Opportunité d'investissement structurée selon les standards MIPROJET.`;
+      project.description ||
+      `Projet ${project.sector ? `dans le secteur ${project.sector}` : "à fort potentiel"}${
+        project.country ? ` basé en ${project.country}` : ""
+      }. Opportunité d'investissement structurée selon les standards MIPROJET.`,
+    220,
+  );
 
   const amount = formatAmount(project.amount_requested, project.currency || "XOF");
-  const link = `/projects/${project.id}`;
+  const slugPart = slugify(project.title) || project.id;
+  const link = `/projects/${slugPart}`;
 
   return (
     <Card className="group overflow-hidden h-full flex flex-col hover:shadow-glow transition-all duration-300 hover:-translate-y-1 border-border/60">
