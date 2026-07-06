@@ -545,6 +545,90 @@ export type Database = {
         }
         Relationships: []
       }
+      entities: {
+        Row: {
+          city: string | null
+          contact_email: string | null
+          contact_phone: string | null
+          country: string | null
+          cover_url: string | null
+          cover_url_mobile: string | null
+          created_at: string
+          description: string | null
+          entity_type: string | null
+          founded_year: number | null
+          gallery_urls: string[] | null
+          id: string
+          is_public: boolean | null
+          legal_form: string | null
+          logo_url: string | null
+          mp_score: number | null
+          name: string
+          recommendation_level: string | null
+          sector: string | null
+          slug: string
+          socials: Json | null
+          tagline: string | null
+          team_size: string | null
+          updated_at: string
+          website_url: string | null
+        }
+        Insert: {
+          city?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          country?: string | null
+          cover_url?: string | null
+          cover_url_mobile?: string | null
+          created_at?: string
+          description?: string | null
+          entity_type?: string | null
+          founded_year?: number | null
+          gallery_urls?: string[] | null
+          id?: string
+          is_public?: boolean | null
+          legal_form?: string | null
+          logo_url?: string | null
+          mp_score?: number | null
+          name: string
+          recommendation_level?: string | null
+          sector?: string | null
+          slug: string
+          socials?: Json | null
+          tagline?: string | null
+          team_size?: string | null
+          updated_at?: string
+          website_url?: string | null
+        }
+        Update: {
+          city?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          country?: string | null
+          cover_url?: string | null
+          cover_url_mobile?: string | null
+          created_at?: string
+          description?: string | null
+          entity_type?: string | null
+          founded_year?: number | null
+          gallery_urls?: string[] | null
+          id?: string
+          is_public?: boolean | null
+          legal_form?: string | null
+          logo_url?: string | null
+          mp_score?: number | null
+          name?: string
+          recommendation_level?: string | null
+          sector?: string | null
+          slug?: string
+          socials?: Json | null
+          tagline?: string | null
+          team_size?: string | null
+          updated_at?: string
+          website_url?: string | null
+        }
+        Relationships: []
+      }
       entity_governance: {
         Row: {
           bio: string | null
@@ -1605,6 +1689,44 @@ export type Database = {
         }
         Relationships: []
       }
+      mp_service_request_history: {
+        Row: {
+          changed_by: string | null
+          created_at: string
+          from_status: string | null
+          id: string
+          note: string | null
+          request_id: string
+          to_status: string
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          note?: string | null
+          request_id: string
+          to_status: string
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          note?: string | null
+          request_id?: string
+          to_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mp_service_request_history_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "mp_user_service_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mp_support_tickets: {
         Row: {
           admin_response: string | null
@@ -2551,6 +2673,7 @@ export type Database = {
           risk_score: string | null
           sector: string | null
           short_slug: string | null
+          slug: string | null
           status: string | null
           tagline: string | null
           title: string
@@ -2588,6 +2711,7 @@ export type Database = {
           risk_score?: string | null
           sector?: string | null
           short_slug?: string | null
+          slug?: string | null
           status?: string | null
           tagline?: string | null
           title: string
@@ -2625,6 +2749,7 @@ export type Database = {
           risk_score?: string | null
           sector?: string | null
           short_slug?: string | null
+          slug?: string | null
           status?: string | null
           tagline?: string | null
           title?: string
@@ -3307,7 +3432,18 @@ export type Database = {
       is_any_admin: { Args: { _user_id: string }; Returns: boolean }
       is_email_unsubscribed: { Args: { _email: string }; Returns: boolean }
       pick_email_provider: { Args: never; Returns: string }
+      unaccent: { Args: { "": string }; Returns: string }
       user_profile_type: { Args: { _user_id: string }; Returns: string }
+      verify_certificate_public: {
+        Args: { _short_id: string }
+        Returns: {
+          certified_at: string
+          content_hash: string
+          short_id: string
+          signed_payload: Json
+          status: string
+        }[]
+      }
     }
     Enums: {
       mp_plan_tier: "free" | "growth" | "partner"
