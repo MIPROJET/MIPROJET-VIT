@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, User, LogOut, LayoutDashboard, ChevronDown, Search, Phone, Sparkles, Briefcase } from "lucide-react";
+import { Menu, X, User, LogOut, LayoutDashboard, ChevronDown, Search, Phone } from "lucide-react";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { useAuth } from "@/hooks/useAuth";
@@ -53,45 +53,49 @@ export const Navigation = () => {
 
   const groups: MenuGroup[] = [
     {
-      key: "about",
-      label: "À propos",
+      key: "ecosystem",
+      label: "Écosystème",
       items: [
-        { to: "/about", label: "Qui sommes-nous", emoji: "🏛️" },
-        { to: "/how-it-works", label: "Comment ça marche", emoji: "⚙️" },
-        { to: "/success-stories", label: "Témoignages", emoji: "🏆" },
+        { to: "/ecosystem", label: "Notre vision", emoji: "🧭" },
+        { to: "/ecosystem#mission", label: "Notre mission", emoji: "🎯" },
+        { to: "/ecosystem#impact", label: "Notre impact", emoji: "📈" },
         { to: "/notre-parcours", label: "Notre parcours", emoji: "🛤️" },
       ],
     },
     {
-      key: "offers",
-      label: "Nos offres",
+      key: "solutions",
+      label: "Solutions",
       items: [
-        { to: "/services", label: "Tous les services", emoji: "🧭" },
-        { to: "/services/structuration", label: "Structuration de projet", emoji: "📋" },
-        { to: "/services/accompagnement", label: "Accompagnement entreprise", emoji: "🤝" },
-        { to: "/incubation", label: "Programme d'incubation", emoji: "🚀" },
-        { to: "/subscription", label: "Abonnements Premium", emoji: "👑" },
+        { to: "/solutions/miprojet-go", label: "MiPROJET Go", emoji: "📱" },
+        { to: "/miprojet-plus", label: "MiPROJET+", emoji: "📈" },
+        { to: "/solutions/miprojet-invest", label: "MiPROJET Invest", emoji: "💎" },
       ],
     },
     {
       key: "opportunities",
       label: "Opportunités",
       items: [
-        { to: "/opportunities", label: "Appels & financements", emoji: "🎯" },
+        { to: "/appels-doffres", label: "Appels d'offres", emoji: "📢" },
+        { to: "/opportunities", label: "Opportunités", emoji: "🎯" },
         { to: "/projects", label: "Projets à financer", emoji: "💼" },
-        { to: "/investors", label: "Espace investisseurs", emoji: "💰" },
-        { to: "/submit-project", label: "Soumettre un projet", emoji: "📤" },
       ],
     },
     {
-      key: "resources",
-      label: "Actualités & Ressources",
+      key: "partners",
+      label: "Investisseurs & Partenaires",
+      items: [
+        { to: "/investors", label: "Espace investisseurs", emoji: "💰" },
+        { to: "/partners", label: "Devenir partenaire", emoji: "🤝" },
+        { to: "/partners", label: "Institutions financières", emoji: "🏦" },
+      ],
+    },
+    {
+      key: "news",
+      label: "Actualités",
       items: [
         { to: "/news", label: "Actualités", emoji: "📰" },
-        { to: "/documents", label: "Documents", emoji: "📚" },
-        { to: "/ebook", label: "Guide 50 financements", emoji: "📕" },
-        { to: "/forum", label: "Forum communauté", emoji: "💬" },
         { to: "/faq", label: "FAQ", emoji: "❓" },
+        { to: "/contact", label: "Contact", emoji: "✉️" },
       ],
     },
   ];
@@ -107,11 +111,10 @@ export const Navigation = () => {
       >
         <div className="container-luxe">
           <div className={cn("flex items-center justify-between transition-all", scrolled ? "h-14" : "h-[68px]")}>
-            {/* Logo */}
             <Link to="/" className="flex items-center group shrink-0" aria-label="MIPROJET — Accueil">
               <img
                 src={logo}
-                alt="MIPROJET — Entrepreneuriat jeune"
+                alt="MIPROJET"
                 className={cn(
                   "w-auto object-contain transition-all duration-300 group-hover:scale-[1.03]",
                   scrolled ? "h-9" : "h-11"
@@ -119,7 +122,6 @@ export const Navigation = () => {
               />
             </Link>
 
-            {/* Desktop centered nav */}
             <div className="hidden lg:flex items-center justify-center flex-1 min-w-0 px-3 xl:px-6">
               <NavigationMenu>
                 <NavigationMenuList className="gap-0 xl:gap-1">
@@ -129,9 +131,9 @@ export const Navigation = () => {
                         {g.label}
                       </NavigationMenuTrigger>
                       <NavigationMenuContent>
-                        <ul className="grid w-[340px] gap-0.5 p-3">
+                        <ul className="grid w-[320px] gap-0.5 p-3">
                           {g.items.map((it) => (
-                            <li key={it.to}>
+                            <li key={it.to + it.label}>
                               <NavigationMenuLink asChild>
                                 <Link
                                   to={it.to}
@@ -149,19 +151,10 @@ export const Navigation = () => {
                       </NavigationMenuContent>
                     </NavigationMenuItem>
                   ))}
-                  <NavigationMenuItem>
-                    <Link
-                      to="/contact"
-                      className="text-[13px] xl:text-[13.5px] font-semibold px-2.5 xl:px-3.5 py-2 hover:text-primary transition-colors whitespace-nowrap"
-                    >
-                      Contact
-                    </Link>
-                  </NavigationMenuItem>
                 </NavigationMenuList>
               </NavigationMenu>
             </div>
 
-            {/* Right cluster */}
             <div className="hidden lg:flex items-center gap-1 xl:gap-2 shrink-0">
               <button
                 aria-label="Rechercher"
@@ -173,19 +166,6 @@ export const Navigation = () => {
 
               <LanguageSelector />
 
-              {/* MiProjet+ — detached pill (Belife "Belife & Moi" style) */}
-              <Link to="/miprojet-plus" className="ml-1">
-                <Button
-                  size="sm"
-                  className="rounded-full px-5 h-10 font-bold text-white shadow-lg hover:shadow-xl hover:scale-[1.03] transition-all"
-                  style={{ background: "var(--gradient-brand)" }}
-                >
-                  <Sparkles className="h-4 w-4 mr-1.5" />
-                  MiProjet+
-                </Button>
-              </Link>
-
-              {/* User */}
               {user ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -233,35 +213,14 @@ export const Navigation = () => {
                 </DropdownMenu>
               ) : (
                 <Link to="/auth" className="ml-1">
-                  <Button variant="ghost" size="sm" className="font-semibold">
-                    {t("nav.login")}
+                  <Button size="sm" className="font-semibold rounded-full px-5">
+                    Connexion
                   </Button>
                 </Link>
               )}
             </div>
 
-            {/* Mobile button */}
             <div className="flex items-center gap-1.5 lg:hidden">
-              <Link to="/appels-doffres">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="rounded-full h-9 px-3 font-bold text-xs border-2 border-accent text-accent"
-                >
-                  <Briefcase className="h-3.5 w-3.5 mr-1" />
-                  Offres
-                </Button>
-              </Link>
-              <Link to="/miprojet-plus">
-                <Button
-                  size="sm"
-                  className="rounded-full h-9 px-3 font-bold text-white text-xs"
-                  style={{ background: "var(--gradient-brand)" }}
-                >
-                  <Sparkles className="h-3.5 w-3.5 mr-1" />
-                  MP+
-                </Button>
-              </Link>
               <button
                 className="text-foreground p-2 -mr-2"
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -272,7 +231,6 @@ export const Navigation = () => {
             </div>
           </div>
 
-          {/* Mobile menu */}
           {isMenuOpen && (
             <div className="lg:hidden py-4 space-y-1 border-t border-border max-h-[78vh] overflow-y-auto animate-fade-in">
               {groups.map((g) => (
@@ -293,7 +251,7 @@ export const Navigation = () => {
                     <div className="pl-3 space-y-0.5 border-l-2 border-primary/30 ml-2 mb-2">
                       {g.items.map((it) => (
                         <Link
-                          key={it.to}
+                          key={it.to + it.label}
                           to={it.to}
                           className="flex items-center gap-2 py-2 px-2 text-sm text-muted-foreground hover:text-primary"
                           onClick={() => setIsMenuOpen(false)}
@@ -306,14 +264,6 @@ export const Navigation = () => {
                   )}
                 </div>
               ))}
-
-              <Link
-                to="/contact"
-                className="block py-2.5 px-2 font-semibold hover:text-primary"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Contact
-              </Link>
 
               <div className="space-y-2 pt-4 border-t border-border">
                 <div className="flex items-center justify-between px-2">
@@ -352,19 +302,11 @@ export const Navigation = () => {
                   </>
                 ) : (
                   <Link to="/auth" onClick={() => setIsMenuOpen(false)}>
-                    <Button variant="ghost" className="w-full">
-                      {t("nav.login")}
+                    <Button className="w-full font-semibold">
+                      Connexion
                     </Button>
                   </Link>
                 )}
-                <Link to="/submit-project" onClick={() => setIsMenuOpen(false)}>
-                  <Button
-                    className="w-full font-semibold text-white"
-                    style={{ background: "var(--gradient-brand)" }}
-                  >
-                    Soumettre un projet
-                  </Button>
-                </Link>
               </div>
             </div>
           )}
