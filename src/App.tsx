@@ -56,6 +56,10 @@ const ShortLink = lazy(() => import("./pages/ShortLink"));
 const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 const Tenders = lazy(() => import("./pages/Tenders"));
 const TenderDetail = lazy(() => import("./pages/TenderDetail"));
+const Ecosystem = lazy(() => import("./pages/Ecosystem"));
+const Partners = lazy(() => import("./pages/Partners"));
+const MiProjetGo = lazy(() => import("./pages/solutions/MiProjetGo"));
+const MiProjetInvest = lazy(() => import("./pages/solutions/MiProjetInvest"));
 
 const queryClient = new QueryClient();
 
@@ -207,6 +211,15 @@ const App = () => (
             <Route path="/appels-doffres" element={<Suspense fallback={<PageLoader />}><Tenders /></Suspense>} />
             <Route path="/appels-doffres/:slug" element={<Suspense fallback={<PageLoader />}><TenderDetail /></Suspense>} />
             <Route path="/tenders" element={<Navigate to="/appels-doffres" replace />} />
+
+            {/* Écosystème & solutions publiques */}
+            <Route path="/ecosystem" element={<Suspense fallback={<PageLoader />}><Ecosystem /></Suspense>} />
+            <Route path="/ecosysteme" element={<Navigate to="/ecosystem" replace />} />
+            <Route path="/partners" element={<Suspense fallback={<PageLoader />}><Partners /></Suspense>} />
+            <Route path="/partenaires" element={<Navigate to="/partners" replace />} />
+            <Route path="/solutions/miprojet-go" element={<Suspense fallback={<PageLoader />}><MiProjetGo /></Suspense>} />
+            <Route path="/solutions/miprojet-invest" element={<Suspense fallback={<PageLoader />}><MiProjetInvest /></Suspense>} />
+            <Route path="/solutions/miprojet-plus" element={<Navigate to="/miprojet-plus" replace />} />
 
             <Route path="/unsubscribe" element={
               <Suspense fallback={<PageLoader />}>
