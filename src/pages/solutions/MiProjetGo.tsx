@@ -102,11 +102,11 @@ const MiProjetGo = () => {
           <p className="text-muted-foreground text-lg mb-8">
             Rejoignez la communauté MiPROJET Go et transformez la gestion de votre activité.
           </p>
-          <Link to="/auth">
+          <a href="https://go.ivoireprojet.com" target="_blank" rel="noopener noreferrer">
             <Button size="lg" className="font-bold text-white" style={{ background: brand }}>
-              Créer mon compte <ArrowRight className="ml-2 h-4 w-4" />
+              Accéder à MiPROJET Go <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
-          </Link>
+          </a>
         </div>
       </section>
 
