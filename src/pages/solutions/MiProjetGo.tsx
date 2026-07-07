@@ -4,6 +4,7 @@ import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Smartphone, Check, ArrowRight, TrendingUp, Package, Users, FileBarChart, WifiOff, Wallet } from "lucide-react";
 import { useSEO } from "@/components/SEOHead";
+import logoGo from "@/assets/logos/miprojet-go.png.asset.json";
 
 const brand = "hsl(140 55% 38%)";
 const features = [
@@ -36,7 +37,7 @@ const MiProjetGo = () => {
         <div className="container-luxe text-white">
           <div className="flex items-center gap-4 mb-6">
             <div className="h-16 bg-white/95 rounded-xl px-3 flex items-center ring-1 ring-white/40">
-              <img src={new URL("../../assets/logos/miprojet-go.png.asset.json", import.meta.url).href && require("@/assets/logos/miprojet-go.png.asset.json").url} alt="MiPROJET Go" className="h-11 w-auto" />
+              <img src={logoGo.url} alt="MiPROJET Go" className="h-11 w-auto" />
             </div>
             <span className="px-3 py-1 rounded-full bg-white/15 text-xs font-bold uppercase tracking-wider">Application terrain</span>
           </div>
