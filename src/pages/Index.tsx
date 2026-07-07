@@ -37,7 +37,7 @@ const Index = () => {
               <span className="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider mb-3">
                 Opportunités
               </span>
-              <h2 className="text-display text-3xl md:text-4xl">Appels d'offres & financements</h2>
+              <h2 className="text-display text-3xl md:text-4xl">Appels d'offres, financements & projets accompagnés</h2>
             </div>
             <Link to="/opportunities">
               <Button variant="outline">
@@ -48,8 +48,8 @@ const Index = () => {
           <div className="grid md:grid-cols-3 gap-4">
             {[
               { title: "Appels d'offres", desc: "Marchés publics et privés en Afrique.", href: "/appels-doffres" },
-              { title: "Financements", desc: "Programmes, subventions et concours ouverts.", href: "/opportunities" },
-              { title: "Projets à financer", desc: "Projets qualifiés cherchant des investisseurs.", href: "/projects" },
+              { title: "Opportunités", desc: "Programmes, subventions et concours ouverts.", href: "/opportunities" },
+              { title: "Projets accompagnés", desc: "Projets qualifiés et structurés dans l'écosystème.", href: "/projects" },
             ].map((o) => (
               <Link
                 key={o.title}

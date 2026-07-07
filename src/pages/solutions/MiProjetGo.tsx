@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Smartphone, Check, ArrowRight, TrendingUp, Package, Users, FileBarChart, WifiOff, Wallet } from "lucide-react";
 import { useSEO } from "@/components/SEOHead";
 
+const brand = "hsl(140 55% 38%)";
 const features = [
   { icon: TrendingUp, title: "Suivi financier", desc: "Recettes, dépenses et bénéfices en temps réel." },
   { icon: Package, title: "Gestion des stocks", desc: "Inventaire, alertes et rotations." },
@@ -27,8 +28,6 @@ const MiProjetGo = () => {
     description: "Application de gestion quotidienne pour commerçants, artisans, agriculteurs et microentrepreneurs. Recettes, dépenses, stocks, rapports.",
   });
 
-  const brand = "hsl(22 95% 58%)";
-
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -47,9 +46,9 @@ const MiProjetGo = () => {
             Digitalisez la gestion quotidienne de votre activité économique. Simple, rapide, adapté au terrain africain.
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
-            <a href="#acces" >
-              <Button size="lg" className="bg-white text-orange-600 hover:bg-white/90 font-bold">
-                Accéder à l'application <ArrowRight className="ml-2 h-4 w-4" />
+            <a href="https://go.ivoireprojet.com" target="_blank" rel="noopener noreferrer">
+              <Button size="lg" className="bg-white text-green-700 hover:bg-white/90 font-bold">
+                Accéder à MiPROJET Go <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </a>
             <Link to="/contact">

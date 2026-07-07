@@ -43,26 +43,27 @@ export const Footer = () => {
             </div>
           </div>
 
-          {/* Quick Links */}
+          {/* Écosystème */}
           <div className="space-y-4">
-            <h3 className="font-semibold text-foreground">{t('footer.links')}</h3>
+            <h3 className="font-semibold text-foreground">Écosystème</h3>
             <ul className="space-y-2 text-sm">
-              <li><Link to="/projects" className="text-muted-foreground hover:text-primary transition-colors">{t('nav.projects')}</Link></li>
-              <li><Link to="/how-it-works" className="text-muted-foreground hover:text-primary transition-colors">{t('nav.howItWorks')}</Link></li>
-              <li><Link to="/services" className="text-muted-foreground hover:text-primary transition-colors">{t('nav.services')}</Link></li>
-              <li><Link to="/about" className="text-muted-foreground hover:text-primary transition-colors">{t('nav.about')}</Link></li>
-              <li><Link to="/faq" className="text-muted-foreground hover:text-primary transition-colors">{t('nav.faq')}</Link></li>
+              <li><Link to="/ecosystem" className="text-muted-foreground hover:text-primary transition-colors">L'écosystème</Link></li>
+              <li><a href="https://go.ivoireprojet.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">MiPROJET Go</a></li>
+              <li><a href="https://plus.ivoireprojet.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">MiPROJET+</a></li>
+              <li><a href="https://invest.ivoireprojet.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">MiPROJET Invest</a></li>
+              <li><Link to="/partners" className="text-muted-foreground hover:text-primary transition-colors">Partenaires</Link></li>
             </ul>
           </div>
 
-          {/* Resources */}
+          {/* Ressources */}
           <div className="space-y-4">
-            <h3 className="font-semibold text-foreground">{t('nav.guide')}</h3>
+            <h3 className="font-semibold text-foreground">Ressources</h3>
             <ul className="space-y-2 text-sm">
-              <li><Link to="/guide" className="text-muted-foreground hover:text-primary transition-colors">Guide du porteur</Link></li>
-              <li><Link to="/investors" className="text-muted-foreground hover:text-primary transition-colors">Guide investisseur</Link></li>
+              <li><Link to="/opportunities" className="text-muted-foreground hover:text-primary transition-colors">Opportunités</Link></li>
+              <li><Link to="/appels-doffres" className="text-muted-foreground hover:text-primary transition-colors">Appels d'offres</Link></li>
+              <li><Link to="/documents" className="text-muted-foreground hover:text-primary transition-colors">Documents & guides</Link></li>
               <li><Link to="/news" className="text-muted-foreground hover:text-primary transition-colors">Actualités</Link></li>
-              <li><Link to="/success-stories" className="text-muted-foreground hover:text-primary transition-colors">Success Stories</Link></li>
+              <li><Link to="/faq" className="text-muted-foreground hover:text-primary transition-colors">FAQ</Link></li>
             </ul>
           </div>
 
