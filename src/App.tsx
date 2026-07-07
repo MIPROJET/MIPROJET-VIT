@@ -267,10 +267,14 @@ const App = () => (
               </Suspense>
             } />
             
-            {/* Admin */}
+            {/* Admin — route interne équipe MiPROJET, non exposée publiquement */}
             <Route path="/admin/init" element={<AdminInit />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/*" element={<AdminDashboard />} />
+            {/* Point d'entrée équipe — /me (non visible dans le menu public) */}
+            <Route path="/me" element={<Auth />} />
+            <Route path="/me/admin" element={<AdminDashboard />} />
+            <Route path="/me/admin/*" element={<AdminDashboard />} />
             
             {/* Catch-all */}
             <Route path="*" element={<NotFound />} />

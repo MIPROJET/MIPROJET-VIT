@@ -4,7 +4,9 @@ import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Smartphone, Check, ArrowRight, TrendingUp, Package, Users, FileBarChart, WifiOff, Wallet } from "lucide-react";
 import { useSEO } from "@/components/SEOHead";
+import logoGo from "@/assets/logos/miprojet-go.png.asset.json";
 
+const brand = "hsl(140 55% 38%)";
 const features = [
   { icon: TrendingUp, title: "Suivi financier", desc: "Recettes, dépenses et bénéfices en temps réel." },
   { icon: Package, title: "Gestion des stocks", desc: "Inventaire, alertes et rotations." },
@@ -27,17 +29,15 @@ const MiProjetGo = () => {
     description: "Application de gestion quotidienne pour commerçants, artisans, agriculteurs et microentrepreneurs. Recettes, dépenses, stocks, rapports.",
   });
 
-  const brand = "hsl(22 95% 58%)";
-
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
 
-      <section className="pt-[140px] pb-16" style={{ background: `linear-gradient(135deg, ${brand}, hsl(22 95% 48%))` }}>
+      <section className="pt-[140px] pb-16" style={{ background: brand }}>
         <div className="container-luxe text-white">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur grid place-items-center ring-1 ring-white/25">
-              <Smartphone className="h-7 w-7" />
+          <div className="flex items-center gap-4 mb-6">
+            <div className="h-16 bg-white/95 rounded-xl px-3 flex items-center ring-1 ring-white/40">
+              <img src={logoGo.url} alt="MiPROJET Go" className="h-11 w-auto" />
             </div>
             <span className="px-3 py-1 rounded-full bg-white/15 text-xs font-bold uppercase tracking-wider">Application terrain</span>
           </div>
@@ -47,9 +47,9 @@ const MiProjetGo = () => {
             Digitalisez la gestion quotidienne de votre activité économique. Simple, rapide, adapté au terrain africain.
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
-            <a href="#acces" >
-              <Button size="lg" className="bg-white text-orange-600 hover:bg-white/90 font-bold">
-                Accéder à l'application <ArrowRight className="ml-2 h-4 w-4" />
+            <a href="https://go.ivoireprojet.com" target="_blank" rel="noopener noreferrer">
+              <Button size="lg" className="bg-white text-green-700 hover:bg-white/90 font-bold">
+                Accéder à MiPROJET Go <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </a>
             <Link to="/contact">
@@ -103,11 +103,11 @@ const MiProjetGo = () => {
           <p className="text-muted-foreground text-lg mb-8">
             Rejoignez la communauté MiPROJET Go et transformez la gestion de votre activité.
           </p>
-          <Link to="/auth">
+          <a href="https://go.ivoireprojet.com" target="_blank" rel="noopener noreferrer">
             <Button size="lg" className="font-bold text-white" style={{ background: brand }}>
-              Créer mon compte <ArrowRight className="ml-2 h-4 w-4" />
+              Accéder à MiPROJET Go <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
-          </Link>
+          </a>
         </div>
       </section>
 

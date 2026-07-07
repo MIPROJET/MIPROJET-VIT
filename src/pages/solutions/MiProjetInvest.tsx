@@ -2,10 +2,11 @@ import { Link } from "react-router-dom";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, ArrowRight, Target, Handshake, ShieldCheck, LineChart, Briefcase } from "lucide-react";
+import { ArrowRight, Target, Handshake, ShieldCheck, LineChart, Briefcase } from "lucide-react";
 import { useSEO } from "@/components/SEOHead";
+import logoInvest from "@/assets/logos/miprojet-invest.png.asset.json";
 
-const brand = "hsl(110 39% 47%)";
+const brand = "hsl(42 78% 50%)";
 
 const features = [
   { icon: Target, title: "Projets sélectionnés", desc: "Uniquement des projets qualifiés et structurés via MiPROJET+." },
@@ -30,11 +31,11 @@ const MiProjetInvest = () => {
     <div className="min-h-screen bg-background">
       <Navigation />
 
-      <section className="pt-[140px] pb-16" style={{ background: `linear-gradient(135deg, ${brand}, hsl(110 39% 38%))` }}>
+      <section className="pt-[140px] pb-16" style={{ background: brand }}>
         <div className="container-luxe text-white">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur grid place-items-center ring-1 ring-white/25">
-              <TrendingUp className="h-7 w-7" />
+          <div className="flex items-center gap-4 mb-6">
+            <div className="h-16 bg-white/95 rounded-xl px-3 flex items-center ring-1 ring-white/40">
+              <img src={logoInvest.url} alt="MiPROJET Invest" className="h-11 w-auto" />
             </div>
             <span className="px-3 py-1 rounded-full bg-white/15 text-xs font-bold uppercase tracking-wider">Investissement</span>
           </div>
@@ -44,11 +45,11 @@ const MiProjetInvest = () => {
             Accédez aux projets sélectionnés de l'écosystème MiPROJET et connectez-vous directement aux porteurs qualifiés.
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
-            <Link to="/projects">
-              <Button size="lg" className="bg-white text-emerald-700 hover:bg-white/90 font-bold">
-                Voir les projets <ArrowRight className="ml-2 h-4 w-4" />
+            <a href="https://invest.ivoireprojet.com" target="_blank" rel="noopener noreferrer">
+              <Button size="lg" className="bg-white text-amber-700 hover:bg-white/90 font-bold">
+                Accéder à MiPROJET Invest <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
-            </Link>
+            </a>
             <Link to="/contact">
               <Button size="lg" variant="outline" className="border-white/40 text-white bg-white/10 hover:bg-white/20">
                 Devenir partenaire
