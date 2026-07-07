@@ -32,11 +32,11 @@ const MiProjetGo = () => {
     <div className="min-h-screen bg-background">
       <Navigation />
 
-      <section className="pt-[140px] pb-16" style={{ background: `linear-gradient(135deg, ${brand}, hsl(22 95% 48%))` }}>
+      <section className="pt-[140px] pb-16" style={{ background: brand }}>
         <div className="container-luxe text-white">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur grid place-items-center ring-1 ring-white/25">
-              <Smartphone className="h-7 w-7" />
+          <div className="flex items-center gap-4 mb-6">
+            <div className="h-16 bg-white/95 rounded-xl px-3 flex items-center ring-1 ring-white/40">
+              <img src={new URL("../../assets/logos/miprojet-go.png.asset.json", import.meta.url).href && require("@/assets/logos/miprojet-go.png.asset.json").url} alt="MiPROJET Go" className="h-11 w-auto" />
             </div>
             <span className="px-3 py-1 rounded-full bg-white/15 text-xs font-bold uppercase tracking-wider">Application terrain</span>
           </div>
