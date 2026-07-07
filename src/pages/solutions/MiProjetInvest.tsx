@@ -2,10 +2,11 @@ import { Link } from "react-router-dom";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, ArrowRight, Target, Handshake, ShieldCheck, LineChart, Briefcase } from "lucide-react";
+import { ArrowRight, Target, Handshake, ShieldCheck, LineChart, Briefcase } from "lucide-react";
 import { useSEO } from "@/components/SEOHead";
+import logoInvest from "@/assets/logos/miprojet-invest.png.asset.json";
 
-const brand = "hsl(110 39% 47%)";
+const brand = "hsl(42 78% 50%)";
 
 const features = [
   { icon: Target, title: "Projets sélectionnés", desc: "Uniquement des projets qualifiés et structurés via MiPROJET+." },
