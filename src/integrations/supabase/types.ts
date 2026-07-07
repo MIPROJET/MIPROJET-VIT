@@ -485,6 +485,48 @@ export type Database = {
         }
         Relationships: []
       }
+      email_send_history: {
+        Row: {
+          category: string
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          metadata: Json
+          queue_id: string | null
+          recipient_email: string
+          status: string
+          subject: string
+          user_id: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json
+          queue_id?: string | null
+          recipient_email: string
+          status?: string
+          subject: string
+          user_id?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json
+          queue_id?: string | null
+          recipient_email?: string
+          status?: string
+          subject?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       email_templates: {
         Row: {
           created_at: string
@@ -2329,6 +2371,48 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_sync_signals: {
+        Row: {
+          actor_user_id: string | null
+          created_at: string
+          handled_at: string | null
+          handled_by_note: string | null
+          id: string
+          payload: Json
+          severity: string
+          signal_type: string
+          source_id: string | null
+          source_table: string | null
+          status: string
+        }
+        Insert: {
+          actor_user_id?: string | null
+          created_at?: string
+          handled_at?: string | null
+          handled_by_note?: string | null
+          id?: string
+          payload?: Json
+          severity?: string
+          signal_type: string
+          source_id?: string | null
+          source_table?: string | null
+          status?: string
+        }
+        Update: {
+          actor_user_id?: string | null
+          created_at?: string
+          handled_at?: string | null
+          handled_by_note?: string | null
+          id?: string
+          payload?: Json
+          severity?: string
+          signal_type?: string
+          source_id?: string | null
+          source_table?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           account_status: string | null
@@ -3251,6 +3335,18 @@ export type Database = {
       }
     }
     Views: {
+      email_ops_overview: {
+        Row: {
+          brevo_sent_today: number | null
+          failed_total: number | null
+          pending_count: number | null
+          pending_signals: number | null
+          resend_sent_today: number | null
+          sent_24h: number | null
+          unsubscribes_total: number | null
+        }
+        Relationships: []
+      }
       public_projects: {
         Row: {
           amount_requested: number | null
@@ -3389,11 +3485,44 @@ export type Database = {
     }
     Functions: {
       archive_expired_tenders: { Args: never; Returns: undefined }
+      build_email_html: {
+        Args: {
+          _body_html: string
+          _cta_label?: string
+          _cta_url?: string
+          _title: string
+        }
+        Returns: string
+      }
       build_short_slug: {
         Args: { _prefix: string; _rank: number; _ts: string }
         Returns: string
       }
       current_user_has_role: { Args: { _role: string }; Returns: boolean }
+      emit_sync_signal: {
+        Args: {
+          _actor: string
+          _payload?: Json
+          _severity?: string
+          _source_id: string
+          _source_table: string
+          _type: string
+        }
+        Returns: string
+      }
+      enqueue_user_email: {
+        Args: {
+          _category: string
+          _entity_id?: string
+          _entity_type?: string
+          _html: string
+          _metadata?: Json
+          _subject: string
+          _text?: string
+          _user_id: string
+        }
+        Returns: string
+      }
       get_admin_payments: {
         Args: never
         Returns: {
@@ -3431,8 +3560,17 @@ export type Database = {
       increment_tender_views: { Args: { _id: string }; Returns: undefined }
       is_any_admin: { Args: { _user_id: string }; Returns: boolean }
       is_email_unsubscribed: { Args: { _email: string }; Returns: boolean }
+      mark_email_failed: {
+        Args: { _error: string; _id: string }
+        Returns: undefined
+      }
+      mark_email_sent: {
+        Args: { _id: string; _provider: string }
+        Returns: undefined
+      }
       pick_email_provider: { Args: never; Returns: string }
       unaccent: { Args: { "": string }; Returns: string }
+      unsubscribe_by_token: { Args: { _token: string }; Returns: Json }
       user_profile_type: { Args: { _user_id: string }; Returns: string }
       verify_certificate_public: {
         Args: { _short_id: string }
