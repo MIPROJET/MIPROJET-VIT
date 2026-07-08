@@ -11,7 +11,7 @@ const FC_BLUE = "#1D4FA3";
 
 export const PartnershipBanner = () => {
   return (
-    <div className="space-y-6">
+    <div className="grid md:grid-cols-2 gap-6 items-stretch">
       {/* ===== DGMarket — Représentant exclusif Côte d'Ivoire ===== */}
       <div className="relative overflow-hidden rounded-2xl bg-card border border-border shadow-elegant">
         <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-blue-500/5" />

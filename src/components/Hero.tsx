@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
+import { HeroNewsCarousel } from "@/components/HeroNewsCarousel";
 import logoGo from "@/assets/logos/miprojet-go.png.asset.json";
 import logoPlus from "@/assets/logos/miprojet-plus.png.asset.json";
 import logoInvest from "@/assets/logos/miprojet-invest.png.asset.json";
@@ -69,6 +70,8 @@ export const Hero = () => {
             </a>
           </div>
         </div>
+
+        <HeroNewsCarousel />
 
         <div id="solutions" className="grid md:grid-cols-3 gap-5 mt-14 max-w-6xl mx-auto">
           {SOLUTIONS.map((s) => (
