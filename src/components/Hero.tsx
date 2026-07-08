@@ -71,6 +71,8 @@ export const Hero = () => {
           </div>
         </div>
 
+        <HeroNewsCarousel />
+
         <div id="solutions" className="grid md:grid-cols-3 gap-5 mt-14 max-w-6xl mx-auto">
           {SOLUTIONS.map((s) => (
             <a
