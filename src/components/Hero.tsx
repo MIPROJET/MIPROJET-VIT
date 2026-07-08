@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
+import { HeroNewsCarousel } from "@/components/HeroNewsCarousel";
 import logoGo from "@/assets/logos/miprojet-go.png.asset.json";
 import logoPlus from "@/assets/logos/miprojet-plus.png.asset.json";
 import logoInvest from "@/assets/logos/miprojet-invest.png.asset.json";

@@ -38,9 +38,8 @@ export const Navigation = () => {
       label: "Écosystème",
       items: [
         { to: "/ecosystem", label: "Qui sommes-nous", emoji: "🧭" },
-        { to: "/ecosystem#mission", label: "Mission & vision", emoji: "🎯" },
-        { to: "/ecosystem#impact", label: "Notre impact", emoji: "📈" },
         { to: "/notre-parcours", label: "Notre parcours", emoji: "🛤️" },
+        { to: "/about", label: "À propos", emoji: "ℹ️" },
       ],
     },
     {
@@ -66,9 +65,7 @@ export const Navigation = () => {
       label: "Acteurs & Partenaires",
       items: [
         { to: "/partners", label: "Nos partenaires", emoji: "🤝" },
-        { to: "/partners#entrepreneurs", label: "Entrepreneurs & entreprises", emoji: "🚀" },
         { to: "/investors", label: "Investisseurs & bailleurs", emoji: "💰" },
-        { to: "/partners#cooperatives", label: "Coopératives & ONG", emoji: "🌱" },
       ],
     },
     {
