@@ -37,9 +37,8 @@ export const Navigation = () => {
       key: "ecosystem",
       label: "Écosystème",
       items: [
-        { to: "/ecosystem#qui", label: "Qui sommes-nous", emoji: "🧭" },
-        { to: "/ecosystem#mission", label: "Notre mission", emoji: "🎯" },
-        { to: "/ecosystem#vision", label: "Notre vision", emoji: "🌍" },
+        { to: "/ecosystem", label: "Qui sommes-nous", emoji: "🧭" },
+        { to: "/ecosystem#mission", label: "Mission & vision", emoji: "🎯" },
         { to: "/ecosystem#impact", label: "Notre impact", emoji: "📈" },
         { to: "/notre-parcours", label: "Notre parcours", emoji: "🛤️" },
       ],
@@ -54,29 +53,6 @@ export const Navigation = () => {
       ],
     },
     {
-      key: "acteurs",
-      label: "Acteurs",
-      items: [
-        { to: "/partners#entrepreneurs", label: "Entrepreneurs & entreprises", emoji: "🚀" },
-        { to: "/investors", label: "Investisseurs", emoji: "💰" },
-        { to: "/partners#institutions", label: "Institutions & bailleurs", emoji: "🏦" },
-        { to: "/partners#cooperatives", label: "Coopératives, associations & ONG", emoji: "🤝" },
-      ],
-    },
-    {
-      key: "services",
-      label: "Services",
-      items: [
-        { to: "/services#conseil", label: "Conseil stratégique", emoji: "🧠" },
-        { to: "/services#conception", label: "Conception de projets", emoji: "📐" },
-        { to: "/services/structuration", label: "Structuration d'entreprise", emoji: "🏗️" },
-        { to: "/services#analyse", label: "Analyse & suivi de projets", emoji: "📊" },
-        { to: "/services#marketing", label: "Marketing digital", emoji: "📣" },
-        { to: "/services#web", label: "Création de sites web", emoji: "🌐" },
-        { to: "/services/accompagnement", label: "Accompagnement organisationnel", emoji: "🤲" },
-      ],
-    },
-    {
       key: "opportunities",
       label: "Opportunités",
       items: [
@@ -86,19 +62,22 @@ export const Navigation = () => {
       ],
     },
     {
+      key: "partners",
+      label: "Acteurs & Partenaires",
+      items: [
+        { to: "/partners", label: "Nos partenaires", emoji: "🤝" },
+        { to: "/partners#entrepreneurs", label: "Entrepreneurs & entreprises", emoji: "🚀" },
+        { to: "/investors", label: "Investisseurs & bailleurs", emoji: "💰" },
+        { to: "/partners#cooperatives", label: "Coopératives & ONG", emoji: "🌱" },
+      ],
+    },
+    {
       key: "ressources",
       label: "Ressources",
       items: [
         { to: "/news", label: "Actualités", emoji: "📰" },
         { to: "/documents", label: "Documents & guides", emoji: "📚" },
         { to: "/faq", label: "FAQ", emoji: "❓" },
-      ],
-    },
-    {
-      key: "partners",
-      label: "Partenaires",
-      items: [
-        { to: "/partners", label: "Nos partenaires", emoji: "🤝" },
       ],
     },
   ];

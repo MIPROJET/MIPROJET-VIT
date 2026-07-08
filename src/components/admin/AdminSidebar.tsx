@@ -98,7 +98,9 @@ const menuGroups = [
 ];
 
 export const AdminSidebar = ({ isOpen, activeTab, onTabChange, onClose }: AdminSidebarProps) => {
-  const [collapsedGroups, setCollapsedGroups] = useState<string[]>([]);
+  // Accordéon single-open : un seul groupe ouvert à la fois
+  const initialOpen = menuGroups.find(g => g.items.some(i => i.id === activeTab))?.label ?? menuGroups[0].label;
+  const [openGroup, setOpenGroup] = useState<string | null>(initialOpen);
 
   if (!isOpen) return null;
 
@@ -108,9 +110,7 @@ export const AdminSidebar = ({ isOpen, activeTab, onTabChange, onClose }: AdminS
   };
 
   const toggleGroup = (label: string) => {
-    setCollapsedGroups(prev =>
-      prev.includes(label) ? prev.filter(g => g !== label) : [...prev, label]
-    );
+    setOpenGroup(prev => (prev === label ? null : label));
   };
 
   return (
@@ -128,22 +128,26 @@ export const AdminSidebar = ({ isOpen, activeTab, onTabChange, onClose }: AdminS
 
           <nav className="space-y-4">
             {menuGroups.map((group) => {
-              const isCollapsed = collapsedGroups.includes(group.label);
+              const isOpen = openGroup === group.label;
               const GroupIcon = (group as any).icon;
+              const hasActive = group.items.some(i => i.id === activeTab);
               return (
-                <div key={group.label}>
+                <div key={group.label} className={cn("rounded-lg border transition-colors", isOpen ? "border-primary/30 bg-muted/40" : "border-transparent")}>
                   <button
                     onClick={() => toggleGroup(group.label)}
-                    className="w-full flex items-center justify-between px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground"
+                    className={cn(
+                      "w-full flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-colors",
+                      hasActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                    )}
                   >
                     <span className="flex items-center gap-2">
                       {GroupIcon && <GroupIcon className="h-3.5 w-3.5" />}
                       {group.label}
                     </span>
-                    <ChevronDown className={cn("h-3 w-3 transition-transform", isCollapsed && "-rotate-90")} />
+                    <ChevronDown className={cn("h-3 w-3 transition-transform", !isOpen && "-rotate-90")} />
                   </button>
-                  {!isCollapsed && (
-                    <div className="space-y-0.5 mt-1">
+                  {isOpen && (
+                    <div className="space-y-0.5 mt-1 px-1 pb-2">
                       {group.items.map((item) => {
                         const Icon = item.icon;
                         const isActive = activeTab === item.id;
