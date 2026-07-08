@@ -182,6 +182,9 @@ export const AdminTendersManager = () => {
           if (!title || !dl) { skipped++; continue; }
           const iso = normalizeCountryCode(country);
           if (!iso) { skipped++; continue; }
+          // Filtre : Afrique de l'Ouest uniquement (CEDEAO + Cap-Vert + Mauritanie)
+          const WEST_AFRICA = new Set(["BJ","BF","CI","GH","GN","GW","LR","ML","NE","NG","SN","SL","TG","CV","GM","MR"]);
+          if (!WEST_AFRICA.has(iso)) { skipped++; continue; }
           const key = tenderKey(title, dl, iso);
           if (fileSeen.has(key)) { skipped++; continue; }
           fileSeen.add(key);

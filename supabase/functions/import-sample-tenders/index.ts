@@ -75,9 +75,12 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
+  // Filtre Afrique de l'Ouest (CEDEAO + Mauritanie + Cap-Vert)
+  const WEST_AFRICA = new Set(["BJ","BF","CI","GH","GN","GW","LR","ML","NE","NG","SN","SL","TG","CV","GM","MR"]);
+
   const rows = parseCSV(csv);
-  // header: notice_title,notice_deadline,org_country
   const records: any[] = [];
+  let skipped = 0;
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i];
     if (!r || r.length < 3) continue;
@@ -85,6 +88,7 @@ Deno.serve(async (req) => {
     if (!title) continue;
     const deadline = parseDeadline(r[1] || "");
     const cc = (r[2] || "").trim().toUpperCase();
+    if (!WEST_AFRICA.has(cc)) { skipped++; continue; }
     records.push({
       notice_title: title,
       notice_deadline: deadline,
@@ -111,7 +115,7 @@ Deno.serve(async (req) => {
     inserted += batch.length;
   }
 
-  return new Response(JSON.stringify({ inserted, total: records.length }), {
+  return new Response(JSON.stringify({ inserted, total: records.length, skipped_non_west_africa: skipped }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });
