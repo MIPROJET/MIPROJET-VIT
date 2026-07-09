@@ -39,13 +39,13 @@ export const HeroNewsCarousel = () => {
   const current = items[index];
 
   return (
-    <div className="mt-12 max-w-4xl mx-auto">
-      <div className="bg-white/8 border border-white/15 backdrop-blur-md rounded-2xl overflow-hidden">
+    <div className="w-full">
+      <div className="bg-white/8 border border-white/15 backdrop-blur-md rounded-2xl overflow-hidden shadow-2xl">
         <Link
           to={`/news/${current.id}`}
-          className="grid md:grid-cols-[220px_1fr] gap-0 items-stretch group"
+          className="flex flex-col group"
         >
-          <div className="aspect-[16/10] md:aspect-auto md:h-full bg-white/10 overflow-hidden">
+          <div className="aspect-[16/9] bg-white/10 overflow-hidden">
             {current.image_url && (
               <img
                 src={current.image_url}
@@ -54,16 +54,11 @@ export const HeroNewsCarousel = () => {
               />
             )}
           </div>
-          <div className="p-5 md:p-6 text-left">
+          <div className="p-5 md:p-6">
             <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-white/70 mb-2">
               <Newspaper className="h-3.5 w-3.5" />
               <span>Actualités</span>
-              {current.category && (
-                <>
-                  <span>•</span>
-                  <span>{current.category}</span>
-                </>
-              )}
+              {current.category && (<><span>•</span><span>{current.category}</span></>)}
             </div>
             <h3 className="text-white font-bold text-lg md:text-xl leading-snug line-clamp-2 mb-2">
               {current.title}
