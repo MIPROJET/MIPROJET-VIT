@@ -5,7 +5,7 @@ import { useLanguage } from "@/i18n/LanguageContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useNewsletterSubscribe } from "@/hooks/useNewsletterSubscribe";
-import logo from "@/assets/logo-miprojet-new.png";
+import logoAsset from "@/assets/logos/miprojet.png.asset.json";
 import cachet from "@/assets/cachet-miprojet.png";
 
 export const Footer = () => {
@@ -26,7 +26,7 @@ export const Footer = () => {
           {/* Brand */}
           <div className="space-y-4">
             <div className="flex items-center space-x-2">
-              <img src={logo} alt="MIPROJET logo" className="h-10 w-10 rounded-lg object-cover flex-shrink-0" />
+              <img src={logoAsset.url} alt="MIPROJET logo" className="h-10 w-auto object-contain flex-shrink-0" />
               <span className="font-bold text-xl text-foreground">MIPROJET</span>
             </div>
             <p className="text-muted-foreground text-sm leading-relaxed">{t('footer.description')}</p>

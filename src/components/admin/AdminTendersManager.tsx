@@ -17,6 +17,27 @@ import { CountryFlag } from "@/components/tenders/CountryFlag";
 type Tender = any;
 type Batch = any;
 
+const WEST_AFRICA_COUNTRIES = [
+  ["BJ", "Bénin"],
+  ["BF", "Burkina Faso"],
+  ["CV", "Cap-Vert"],
+  ["CI", "Côte d'Ivoire"],
+  ["GM", "Gambie"],
+  ["GH", "Ghana"],
+  ["GN", "Guinée"],
+  ["GW", "Guinée-Bissau"],
+  ["LR", "Libéria"],
+  ["ML", "Mali"],
+  ["MR", "Mauritanie"],
+  ["NE", "Niger"],
+  ["NG", "Nigéria"],
+  ["SN", "Sénégal"],
+  ["SL", "Sierra Leone"],
+  ["TG", "Togo"],
+] as const;
+
+const WEST_AFRICA: ReadonlySet<string> = new Set(WEST_AFRICA_COUNTRIES.map(([code]) => code));
+
 const detectSector = (t: string) => {
   const tl = t.toLowerCase();
   const map: [string, string[]][] = [
@@ -102,7 +123,8 @@ export const AdminTendersManager = () => {
   const [q, setQ] = useState("");
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [report, setReport] = useState<{ inserted: number; updated: number; skipped: number; total: number; unique: number } | null>(null);
+  const [report, setReport] = useState<{ inserted: number; updated: number; skipped: number; total: number; unique: number; eligible: number; outside: number; invalid: number; duplicates: number } | null>(null);
+  const [preview, setPreview] = useState<{ total: number; eligible: number; outside: number; invalid: number; duplicates: number; countries: Record<string, number> } | null>(null);
   const [mode, setMode] = useState<"skip" | "replace" | "wipe">("replace");
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -118,6 +140,27 @@ export const AdminTendersManager = () => {
   };
   useEffect(() => { reload(); }, []);
 
+  const analyzeRows = (rows: string[][], header: string[]) => {
+    const seen = new Set<string>();
+    const countries: Record<string, number> = {};
+    let eligible = 0, outside = 0, invalid = 0, duplicates = 0;
+    for (const r of rows) {
+      const title = pick(r, header, ["notice_title", "title", "titre", "objet"], 0);
+      const deadline = pick(r, header, ["notice_deadline", "deadline", "date limite", "date_limite"], 1);
+      const country = pick(r, header, ["country_code", "org_country", "country", "pays"], 2);
+      const dl = parseDeadline((deadline || "").trim());
+      const iso = normalizeCountryCode(country);
+      if (!title || !dl || !iso) { invalid++; continue; }
+      if (!WEST_AFRICA.has(iso)) { outside++; continue; }
+      const key = tenderKey(title, dl, iso);
+      if (seen.has(key)) { duplicates++; continue; }
+      seen.add(key);
+      countries[iso] = (countries[iso] || 0) + 1;
+      eligible++;
+    }
+    return { total: rows.length, eligible, outside, invalid, duplicates, countries };
+  };
+
   const handleFile = async (file: File) => {
     if (!file) return;
     setImporting(true);
@@ -128,6 +171,8 @@ export const AdminTendersManager = () => {
       const rows = parseCSV(text);
       const header = rows.shift()?.map((h) => h.trim().toLowerCase());
       if (!header) throw new Error("CSV vide");
+      const preflight = analyzeRows(rows, header);
+      setPreview(preflight);
 
       const { data: batch } = await (supabase as any)
         .from("tender_import_batches")
@@ -151,7 +196,7 @@ export const AdminTendersManager = () => {
       const fileSeen = new Set<string>();
 
       let inserted = 0, updated = 0, skipped = 0;
-      const CHUNK = 100;
+      const CHUNK = 1000;
 
       const buildRow = (title: string, dl: string, iso: string) => {
         const cn = countryNameFromCode(iso);
@@ -182,8 +227,6 @@ export const AdminTendersManager = () => {
           if (!title || !dl) { skipped++; continue; }
           const iso = normalizeCountryCode(country);
           if (!iso) { skipped++; continue; }
-          // Filtre : Afrique de l'Ouest uniquement (CEDEAO + Cap-Vert + Mauritanie)
-          const WEST_AFRICA = new Set(["BJ","BF","CI","GH","GN","GW","LR","ML","NE","NG","SN","SL","TG","CV","GM","MR"]);
           if (!WEST_AFRICA.has(iso)) { skipped++; continue; }
           const key = tenderKey(title, dl, iso);
           if (fileSeen.has(key)) { skipped++; continue; }
@@ -245,7 +288,7 @@ export const AdminTendersManager = () => {
         duplicate_rows: skipped,
       }).eq("id", batch?.id);
 
-      setReport({ inserted, updated, skipped, total: rows.length, unique: fileSeen.size });
+      setReport({ inserted, updated, skipped, total: rows.length, unique: fileSeen.size, eligible: preflight.eligible, outside: preflight.outside, invalid: preflight.invalid, duplicates: preflight.duplicates });
       toast({
         title: "Import terminé",
         description: `${inserted} ajouté(s) · ${updated} mis à jour · ${skipped} ignoré(s).`,
@@ -335,9 +378,29 @@ export const AdminTendersManager = () => {
               >
                 <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
                 <p className="font-semibold">Glissez-déposez votre fichier .csv ici</p>
-                <p className="text-sm text-muted-foreground">ou cliquez pour parcourir — colonnes attendues : notice_title, notice_deadline, country_code</p>
+                <p className="text-sm text-muted-foreground">Jusqu'à 100 000 lignes — seules les opportunités Afrique de l'Ouest sont retenues.</p>
                 <input ref={fileRef} type="file" accept=".csv" hidden onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
               </div>
+              <Card className="bg-muted/35">
+                <CardContent className="p-4 space-y-3">
+                  <p className="font-semibold text-sm">Pays acceptés</p>
+                  <div className="flex flex-wrap gap-2">
+                    {WEST_AFRICA_COUNTRIES.map(([code, name]) => (
+                      <Badge key={code} variant="secondary" className="gap-1.5">
+                        <CountryFlag code={code} size={13} /> {name}
+                      </Badge>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+              {preview && (
+                <Card className="border-primary/30 bg-primary/5">
+                  <CardContent className="p-4">
+                    <p className="font-semibold mb-1">Résumé avant import</p>
+                    <p className="text-sm">🎯 {preview.eligible} éligibles · 🌍 {preview.outside} hors zone · ⚠️ {preview.invalid} invalides · ♻️ {preview.duplicates} doublons fichier · 📦 {preview.total} lignes</p>
+                  </CardContent>
+                </Card>
+              )}
               {importing && (
                 <div>
                   <Progress value={progress} />
@@ -348,7 +411,7 @@ export const AdminTendersManager = () => {
                 <Card className="bg-muted/40">
                   <CardContent className="p-4">
                     <p className="font-semibold mb-1">Rapport d'import</p>
-                    <p className="text-sm">✅ {report.inserted} ajoutés · 🔄 {report.updated} mis à jour · 🎯 {report.unique} appels réels détectés · ⏭️ {report.skipped} ignorés · 📦 {report.total} lignes traitées</p>
+                    <p className="text-sm">✅ {report.inserted} ajoutés · 🔄 {report.updated} mis à jour · 🎯 {report.eligible} éligibles · ⏭️ {report.skipped} ignorés · 🌍 {report.outside} hors zone · ⚠️ {report.invalid} invalides · ♻️ {report.duplicates} doublons fichier · 📦 {report.total} lignes traitées</p>
                   </CardContent>
                 </Card>
               )}

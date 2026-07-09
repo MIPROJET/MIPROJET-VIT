@@ -105,7 +105,7 @@ const App = () => (
             <Route path="/success-stories" element={<SuccessStories />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
-            <Route path="/submit-project" element={<SubmitProject />} />
+            <Route path="/submit-project" element={<Navigate to="/miprojet-plus" replace />} />
             <Route path="/service-request" element={<ServiceRequest />} />
             <Route path="/access-request/:projectId" element={<AccessRequest />} />
             
