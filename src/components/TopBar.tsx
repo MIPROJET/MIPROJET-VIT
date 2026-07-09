@@ -10,19 +10,15 @@ export const TopBar = () => {
             <Briefcase className="h-3.5 w-3.5" /> Appels d'offres
           </Link>
           <span className="opacity-40">|</span>
-          <Link to="/projects" className="hover:opacity-80 transition-opacity">Porteurs de projets</Link>
+          <a href="https://go.ivoireprojet.com" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity whitespace-nowrap">MiPROJET Go</a>
           <span className="opacity-40">|</span>
-          <Link to="/investors" className="hover:opacity-80 transition-opacity">Investisseurs</Link>
+          <a href="https://plus.ivoireprojet.com" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity whitespace-nowrap">MiPROJET+</a>
           <span className="opacity-40">|</span>
-          <Link to="/services/accompagnement" className="hover:opacity-80 transition-opacity whitespace-nowrap">Entreprises & Start-ups</Link>
+          <a href="https://invest.ivoireprojet.com" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity whitespace-nowrap">MiPROJET Invest</a>
           <span className="opacity-40">|</span>
-          <Link to="/opportunities" className="hover:opacity-80 transition-opacity whitespace-nowrap">Bailleurs & Institutions</Link>
+          <Link to="/partners" className="hover:opacity-80 transition-opacity whitespace-nowrap">Partenaires</Link>
           <span className="opacity-40">|</span>
-          <Link to="/services" className="hover:opacity-80 transition-opacity">Coopératives</Link>
-          <span className="opacity-40">|</span>
-          <Link to="/services" className="hover:opacity-80 transition-opacity">Associations</Link>
-          <span className="opacity-40">|</span>
-          <Link to="/services" className="hover:opacity-80 transition-opacity whitespace-nowrap">ONG</Link>
+          <Link to="/contact" className="hover:opacity-80 transition-opacity">Contact</Link>
         </div>
         <div className="flex items-center gap-3 shrink-0">
           <div className="flex items-center gap-2">
