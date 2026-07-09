@@ -36,7 +36,7 @@ const WEST_AFRICA_COUNTRIES = [
   ["TG", "Togo"],
 ] as const;
 
-const WEST_AFRICA = new Set(WEST_AFRICA_COUNTRIES.map(([code]) => code));
+const WEST_AFRICA: ReadonlySet<string> = new Set(WEST_AFRICA_COUNTRIES.map(([code]) => code));
 
 const detectSector = (t: string) => {
   const tl = t.toLowerCase();
