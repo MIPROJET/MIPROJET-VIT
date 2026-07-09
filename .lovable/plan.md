@@ -42,11 +42,31 @@ Uploadés dans `src/assets/logos/` en tant qu'assets CDN :
 - `miprojet-plus.png`
 - `miprojet-invest.png`
 
-## 🛡️ SQL manuel — aucun requis pour cette étape
+## 🛡️ SQL / branchement base
 
-La refonte de la vitrine est **UI/UX uniquement**. Aucun schéma de base ne change.
+Aucun nouveau schéma n'est requis pour cette étape : le CRUD admin s'appuie sur les tables existantes et leurs RLS déjà en place.
 
-Les routes `/auth`, `/submit-project`, `/dashboard` restent dans le code (utilisées par l'équipe interne via `/me`), mais **ne sont plus liées depuis aucun élément public** (navigation, footer, hero, CTA).
+```sql
+-- MiPROJET Go
+select * from public.profiles order by created_at desc;
+select * from public.user_subscriptions order by created_at desc;
+
+-- MiPROJET+
+select * from public.mp_projects order by created_at desc;
+select * from public.mp_scoring_results where is_active = true order by created_at desc;
+select * from public.mp_certifications order by created_at desc;
+select * from public.mp_user_service_requests order by created_at desc;
+
+-- MiPROJET Invest
+select * from public.projects order by created_at desc;
+select * from public.investor_prospects order by created_at desc;
+select * from public.opportunities order by created_at desc;
+
+-- Permissions admin existantes côté UI/RLS
+select public.current_user_has_role('admin');
+```
+
+Les routes publiques supprimées ou obsolètes sont retirées du menu et du sitemap ; `/submit-project` redirige vers `/miprojet-plus`.
 
 ## ✅ Point d'entrée équipe
 
