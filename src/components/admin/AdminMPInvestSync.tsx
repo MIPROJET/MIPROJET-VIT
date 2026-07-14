@@ -8,78 +8,51 @@ import { Input } from "@/components/ui/input";
 import { Loader2, RefreshCw, Rocket, Link2, CheckCircle2, XCircle, Search } from "lucide-react";
 import { toast } from "sonner";
 
-type MpProject = {
-  id: string;
-  user_id: string;
-  title: string | null;
-  sector: string | null;
-  amount_needed: number | null;
-  country: string | null;
-  city: string | null;
-  publish_when_eligible: boolean | null;
-  created_at: string;
-};
-
-type MpEvaluation = {
-  id: string;
-  project_id: string | null;
-  score_global: number | null;
-  niveau: string | null;
-  published_to_invest: boolean | null;
-  published_at: string | null;
-};
-
-type InvestProject = {
-  id: string;
-  title: string;
-  status: string;
-  is_public: boolean | null;
-  mp_score: number | null;
-  metadata: any;
-};
-
 export const AdminMPInvestSync = () => {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
-  const [mps, setMps] = useState<MpProject[]>([]);
-  const [evals, setEvals] = useState<Record<string, MpEvaluation>>({});
-  const [invest, setInvest] = useState<Record<string, InvestProject>>({});
+  const [mps, setMps] = useState<any[]>([]);
+  const [evals, setEvals] = useState<Record<string, any>>({});
+  const [invest, setInvest] = useState<Record<string, any>>({});
   const [profiles, setProfiles] = useState<Record<string, any>>({});
   const [q, setQ] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data: mpData } = await supabase
+    const { data: mpData } = await (supabase as any)
       .from("mp_projects")
-      .select("id,user_id,title,sector,amount_needed,country,city,publish_when_eligible,created_at")
+      .select("*")
       .order("created_at", { ascending: false })
       .limit(500);
-    const list = (mpData as MpProject[]) || [];
+    const list: any[] = mpData || [];
     setMps(list);
 
-    const ids = list.map((m) => m.id);
     const userIds = Array.from(new Set(list.map((m) => m.user_id).filter(Boolean)));
+    const ids = list.map((m) => m.id);
 
     const [{ data: evData }, { data: invData }, { data: profData }] = await Promise.all([
       ids.length
-        ? supabase.from("mp_evaluations").select("*").in("project_id", ids)
-        : Promise.resolve({ data: [] as any[] }),
-      supabase.from("projects").select("id,title,status,is_public,mp_score,metadata").eq("source", "miprojet").limit(1000),
+        ? (supabase as any).from("mp_evaluations").select("*").in("project_id", ids)
+        : Promise.resolve({ data: [] }),
+      (supabase as any).from("projects").select("*").not("mp_score", "is", null).limit(2000),
       userIds.length
-        ? supabase.from("profiles").select("id,email,first_name,last_name").in("id", userIds)
-        : Promise.resolve({ data: [] as any[] }),
+        ? supabase.from("profiles").select("id,email,first_name,last_name").in("id", userIds as string[])
+        : Promise.resolve({ data: [] }),
     ]);
 
-    const em: Record<string, MpEvaluation> = {};
+    const em: Record<string, any> = {};
     (evData || []).forEach((e: any) => {
       if (e.project_id) em[e.project_id] = e;
     });
     setEvals(em);
 
-    const im: Record<string, InvestProject> = {};
+    // Link invest projects to mp_projects by matching owner_id + title
+    const im: Record<string, any> = {};
     (invData || []).forEach((p: any) => {
-      const mpId = p.metadata?.mp_project_id;
-      if (mpId) im[mpId] = p;
+      const match = list.find(
+        (m) => m.user_id === p.owner_id && (m.title || "") === (p.title || "") && m.title
+      );
+      if (match) im[match.id] = p;
     });
     setInvest(im);
 
@@ -94,34 +67,29 @@ export const AdminMPInvestSync = () => {
     load();
   }, [load]);
 
-  const publishToInvest = async (mp: MpProject) => {
+  const publishToInvest = async (mp: any) => {
     setBusy(mp.id);
     try {
       const ev = evals[mp.id];
       const existing = invest[mp.id];
-      const payload = {
+      const payload: any = {
         title: mp.title || "Projet MiProjet+",
+        description: mp.description || mp.short_pitch || null,
         sector: mp.sector,
-        amount_requested: mp.amount_needed,
+        amount_requested: mp.budget_initial ?? null,
         country: mp.country,
         city: mp.city,
         status: "published",
         is_public: true,
-        source: "miprojet",
         owner_id: mp.user_id,
         mp_score: ev?.score_global ?? null,
-        metadata: {
-          mp_project_id: mp.id,
-          mp_evaluation_id: ev?.id ?? null,
-          mp_niveau: ev?.niveau ?? null,
-        },
       };
       if (existing) {
-        const { error } = await supabase.from("projects").update(payload).eq("id", existing.id);
+        const { error } = await (supabase as any).from("projects").update(payload).eq("id", existing.id);
         if (error) throw error;
         toast.success("Projet Invest mis à jour");
       } else {
-        const { error } = await supabase.from("projects").insert(payload as any);
+        const { error } = await (supabase as any).from("projects").insert(payload);
         if (error) throw error;
         toast.success("Projet publié sur MiPROJET Invest");
       }
@@ -133,11 +101,11 @@ export const AdminMPInvestSync = () => {
     }
   };
 
-  const unpublish = async (mp: MpProject) => {
+  const unpublish = async (mp: any) => {
     const existing = invest[mp.id];
     if (!existing) return;
     setBusy(mp.id);
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("projects")
       .update({ is_public: false, status: "draft" })
       .eq("id", existing.id);
@@ -163,7 +131,9 @@ export const AdminMPInvestSync = () => {
   const stats = {
     total: mps.length,
     evaluated: Object.keys(evals).length,
-    financable: Object.values(evals).filter((e) => e.niveau === "financable" || e.niveau === "Finançable").length,
+    financable: Object.values(evals).filter(
+      (e: any) => e.niveau === "financable" || e.niveau === "Finançable"
+    ).length,
     published: Object.keys(invest).length,
   };
 
@@ -184,7 +154,7 @@ export const AdminMPInvestSync = () => {
       </div>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-4">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <CardTitle>Projets MiPROJET+</CardTitle>
             <CardDescription>
@@ -222,7 +192,7 @@ export const AdminMPInvestSync = () => {
                     <TableHead>Projet</TableHead>
                     <TableHead>Porteur</TableHead>
                     <TableHead>Secteur</TableHead>
-                    <TableHead>Montant</TableHead>
+                    <TableHead>Budget</TableHead>
                     <TableHead>Évaluation</TableHead>
                     <TableHead>Sur Invest</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -248,7 +218,9 @@ export const AdminMPInvestSync = () => {
                         </TableCell>
                         <TableCell>{m.sector || "—"}</TableCell>
                         <TableCell>
-                          {m.amount_needed ? `${Number(m.amount_needed).toLocaleString("fr-FR")} FCFA` : "—"}
+                          {m.budget_initial
+                            ? `${Number(m.budget_initial).toLocaleString("fr-FR")} FCFA`
+                            : "—"}
                         </TableCell>
                         <TableCell>
                           {ev ? (
@@ -285,7 +257,12 @@ export const AdminMPInvestSync = () => {
                               {inv ? "Resync" : "Publier"}
                             </Button>
                             {inv && (
-                              <Button size="sm" variant="ghost" disabled={busy === m.id} onClick={() => unpublish(m)}>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                disabled={busy === m.id}
+                                onClick={() => unpublish(m)}
+                              >
                                 Dépublier
                               </Button>
                             )}
