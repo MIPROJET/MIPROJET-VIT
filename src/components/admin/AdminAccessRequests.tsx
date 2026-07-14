@@ -87,17 +87,11 @@ export const AdminAccessRequests = () => {
     setProcessing(true);
     
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      const { error } = await supabase
-        .from('access_requests')
-        .update({
-          status: action,
-          admin_notes: adminNotes || null,
-          reviewed_by: user?.id,
-          reviewed_at: new Date().toISOString(),
-        })
-        .eq('id', requestId);
+      const { error } = await supabase.rpc('admin_update_access_request', {
+        _id: requestId,
+        _status: action,
+        _notes: adminNotes || null,
+      });
 
       if (error) throw error;
 
