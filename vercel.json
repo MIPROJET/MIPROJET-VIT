@@ -1,11 +1,12 @@
 {
   "rewrites": [
+    { "source": "/__l5e/:path*", "destination": "https://kind-idea-hub.lovable.app/__l5e/:path*" },
     { "source": "/share/:type/:id", "destination": "/api/og?type=:type&id=:id" },
     { "source": "/n/:slug*", "destination": "/api/social?prefix=n&slug=:slug*" },
     { "source": "/o/:slug*", "destination": "/api/social?prefix=o&slug=:slug*" },
     { "source": "/p/:slug*", "destination": "/api/social?prefix=p&slug=:slug*" },
     { "source": "/d/:slug*", "destination": "/api/social?prefix=d&slug=:slug*" },
-    { "source": "/((?!api/|assets/|.*\\.).*)", "destination": "/index.html" }
+    { "source": "/((?!api/|assets/|__l5e/|.*\\.).*)", "destination": "/index.html" }
   ],
   "headers": [
     {
