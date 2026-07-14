@@ -5,7 +5,7 @@
     { "source": "/o/:slug*", "destination": "/api/social?prefix=o&slug=:slug*" },
     { "source": "/p/:slug*", "destination": "/api/social?prefix=p&slug=:slug*" },
     { "source": "/d/:slug*", "destination": "/api/social?prefix=d&slug=:slug*" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!api/|assets/|.*\\.).*)", "destination": "/index.html" }
   ],
   "headers": [
     {
