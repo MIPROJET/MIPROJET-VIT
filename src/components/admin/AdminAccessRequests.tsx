@@ -58,21 +58,26 @@ export const AdminAccessRequests = () => {
 
   const fetchRequests = async () => {
     setLoading(true);
-    
-    const { data, error } = await supabase
-      .from('access_requests')
-      .select(`
-        *,
-        project:projects(title),
-        profile:profiles(first_name, last_name, company_name, user_type)
-      `)
-      .order('created_at', { ascending: false });
+
+    const { data, error } = await supabase.rpc('admin_list_access_requests');
 
     if (!error && data) {
-      setRequests(data.map(r => ({
+      const rows = data as any[];
+      const projectIds = Array.from(new Set(rows.map(r => r.project_id).filter(Boolean)));
+      const userIds = Array.from(new Set(rows.map(r => r.user_id).filter(Boolean)));
+
+      const [{ data: projects }, { data: profiles }] = await Promise.all([
+        projectIds.length ? supabase.from('projects').select('id, title').in('id', projectIds) : Promise.resolve({ data: [] as any[] }),
+        userIds.length ? supabase.from('profiles').select('id, first_name, last_name, company_name, user_type').in('id', userIds) : Promise.resolve({ data: [] as any[] }),
+      ]);
+
+      const projMap = new Map((projects || []).map((p: any) => [p.id, p]));
+      const profMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+
+      setRequests(rows.map(r => ({
         ...r,
-        project: r.project as any,
-        profile: r.profile as any
+        project: projMap.get(r.project_id) as any,
+        profile: profMap.get(r.user_id) as any,
       })));
     }
     setLoading(false);
@@ -82,17 +87,11 @@ export const AdminAccessRequests = () => {
     setProcessing(true);
     
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      const { error } = await supabase
-        .from('access_requests')
-        .update({
-          status: action,
-          admin_notes: adminNotes || null,
-          reviewed_by: user?.id,
-          reviewed_at: new Date().toISOString(),
-        })
-        .eq('id', requestId);
+      const { error } = await supabase.rpc('admin_update_access_request', {
+        _id: requestId,
+        _status: action,
+        _notes: adminNotes || null,
+      });
 
       if (error) throw error;
 
