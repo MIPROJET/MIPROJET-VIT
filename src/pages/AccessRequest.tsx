@@ -249,9 +249,6 @@ const AccessRequest = () => {
               <AlertDescription>
                 Vous avez déjà soumis une demande d'accès pour ce projet. 
                 Statut: <strong>{getStatusConfig(existingRequest.status).label}</strong>
-                {existingRequest.admin_notes && (
-                  <p className="mt-2">Note: {existingRequest.admin_notes}</p>
-                )}
               </AlertDescription>
             </Alert>
           )}
