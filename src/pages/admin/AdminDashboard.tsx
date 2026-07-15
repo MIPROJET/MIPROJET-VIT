@@ -319,7 +319,10 @@ const AdminDashboard = () => {
             return (
               <div key={g.id} className="relative shrink-0">
                 <button
-                  onClick={() => setOpenGroup(isOpen ? null : g.id)}
+                  onClick={() => {
+                    if (g.modules.length === 1) selectModule(g.modules[0].id);
+                    else setOpenGroup(isOpen ? null : g.id);
+                  }}
                   className={cn(
                     "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap",
                     isActiveGroup ? "bg-white/20 text-white" : "text-white/80 hover:bg-white/10"
