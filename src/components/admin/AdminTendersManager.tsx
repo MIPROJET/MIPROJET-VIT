@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -92,6 +93,50 @@ const parseCSV = (text: string) => {
   return lines.filter((r) => r.some((x) => x.trim()));
 };
 
+// Universal parser: CSV, TSV, TXT, XLSX, XLS, JSON, JSONL.
+// Returns { header, rows } where rows are string[][] aligned to header.
+const parseAnyFile = async (file: File): Promise<{ header: string[]; rows: string[][] }> => {
+  const name = file.name.toLowerCase();
+  const isExcel = /\.(xlsx|xls|xlsm|ods)$/.test(name);
+  const isJson = /\.(json|jsonl|ndjson)$/.test(name);
+
+  if (isExcel) {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: "array" });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const aoa = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1, defval: "", raw: false, blankrows: false });
+    if (!aoa.length) return { header: [], rows: [] };
+    const header = (aoa[0] as any[]).map((h) => String(h ?? "").trim().toLowerCase());
+    const rows = aoa.slice(1).map((r) => (r as any[]).map((v) => (v == null ? "" : String(v))));
+    return { header, rows };
+  }
+
+  const text = await file.text();
+
+  if (isJson) {
+    let arr: any[] = [];
+    try {
+      const trimmed = text.trim();
+      if (trimmed.startsWith("[")) arr = JSON.parse(trimmed);
+      else arr = trimmed.split(/\r?\n/).filter(Boolean).map((l) => JSON.parse(l));
+    } catch (e) {
+      throw new Error("JSON invalide");
+    }
+    if (!arr.length) return { header: [], rows: [] };
+    const header = Array.from(new Set(arr.flatMap((o) => Object.keys(o || {})))).map((k) => k.toLowerCase());
+    const rows = arr.map((o) => header.map((k) => {
+      const v = o?.[k] ?? o?.[k.toUpperCase()] ?? "";
+      return v == null ? "" : String(v);
+    }));
+    return { header, rows };
+  }
+
+  // CSV/TSV/TXT — reuse CSV parser (delimiter auto-detected: , ; \t)
+  const parsed = parseCSV(text);
+  const header = parsed.shift()?.map((h) => h.trim().toLowerCase()) || [];
+  return { header, rows: parsed };
+};
+
 const parseDeadline = (s: string) => {
   const raw = (s || "").trim();
   if (!raw) return null;
@@ -167,10 +212,8 @@ export const AdminTendersManager = () => {
     setProgress(0);
     setReport(null);
     try {
-      const text = await file.text();
-      const rows = parseCSV(text);
-      const header = rows.shift()?.map((h) => h.trim().toLowerCase());
-      if (!header) throw new Error("CSV vide");
+      const { header, rows } = await parseAnyFile(file);
+      if (!header || !header.length) throw new Error("Fichier vide ou format non reconnu");
       const preflight = analyzeRows(rows, header);
       setPreview(preflight);
 
@@ -377,9 +420,9 @@ export const AdminTendersManager = () => {
                 className="border-2 border-dashed border-border rounded-xl p-10 text-center cursor-pointer hover:border-primary transition"
               >
                 <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                <p className="font-semibold">Glissez-déposez votre fichier .csv ici</p>
-                <p className="text-sm text-muted-foreground">Jusqu'à 100 000 lignes — seules les opportunités Afrique de l'Ouest sont retenues.</p>
-                <input ref={fileRef} type="file" accept=".csv" hidden onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
+                <p className="font-semibold">Glissez-déposez votre fichier ici</p>
+                <p className="text-sm text-muted-foreground">CSV, TSV, TXT, Excel (.xlsx/.xls), JSON, JSONL — jusqu'à 100 000+ lignes. Seule l'Afrique de l'Ouest est retenue.</p>
+                <input ref={fileRef} type="file" accept=".csv,.tsv,.txt,.xlsx,.xls,.xlsm,.ods,.json,.jsonl,.ndjson" hidden onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
               </div>
               <Card className="bg-muted/35">
                 <CardContent className="p-4 space-y-3">
