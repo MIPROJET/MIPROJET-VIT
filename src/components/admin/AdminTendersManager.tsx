@@ -212,10 +212,8 @@ export const AdminTendersManager = () => {
     setProgress(0);
     setReport(null);
     try {
-      const text = await file.text();
-      const rows = parseCSV(text);
-      const header = rows.shift()?.map((h) => h.trim().toLowerCase());
-      if (!header) throw new Error("CSV vide");
+      const { header, rows } = await parseAnyFile(file);
+      if (!header || !header.length) throw new Error("Fichier vide ou format non reconnu");
       const preflight = analyzeRows(rows, header);
       setPreview(preflight);
 
