@@ -420,9 +420,9 @@ export const AdminTendersManager = () => {
                 className="border-2 border-dashed border-border rounded-xl p-10 text-center cursor-pointer hover:border-primary transition"
               >
                 <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                <p className="font-semibold">Glissez-déposez votre fichier .csv ici</p>
-                <p className="text-sm text-muted-foreground">Jusqu'à 100 000 lignes — seules les opportunités Afrique de l'Ouest sont retenues.</p>
-                <input ref={fileRef} type="file" accept=".csv" hidden onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
+                <p className="font-semibold">Glissez-déposez votre fichier ici</p>
+                <p className="text-sm text-muted-foreground">CSV, TSV, TXT, Excel (.xlsx/.xls), JSON, JSONL — jusqu'à 100 000+ lignes. Seule l'Afrique de l'Ouest est retenue.</p>
+                <input ref={fileRef} type="file" accept=".csv,.tsv,.txt,.xlsx,.xls,.xlsm,.ods,.json,.jsonl,.ndjson" hidden onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
               </div>
               <Card className="bg-muted/35">
                 <CardContent className="p-4 space-y-3">
