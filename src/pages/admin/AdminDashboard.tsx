@@ -1,19 +1,23 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, LogOut, Search, ChevronDown,
-  Users, FolderKanban, FileText, Newspaper, Receipt, CreditCard,
-  HelpCircle, ClipboardCheck, Sparkles, Megaphone, Building2,
+  Users, FolderKanban, Newspaper, Receipt, CreditCard,
+  HelpCircle, ClipboardCheck, Sparkles, Building2,
   ShieldCheck, Settings, Wrench, BarChart3, Award, MessageSquareQuote,
   UserPlus, Mail, GraduationCap, Gift, Database, Handshake, RefreshCcw,
   Files, Briefcase, TrendingUp,
 } from "lucide-react";
+import mpLogo from "@/assets/logos/miprojet.png";
+import mpGoLogo from "@/assets/logos/miprojet-go.png";
+import mpPlusLogo from "@/assets/logos/miprojet-plus.png";
+import mpInvestLogo from "@/assets/logos/miprojet-invest.png";
 import { AdminStats } from "@/components/admin/AdminStats";
 import { AdminProjectsTable } from "@/components/admin/AdminProjectsTable";
 import { AdminUsersTable } from "@/components/admin/AdminUsersTable";
@@ -53,307 +57,155 @@ type ModuleDef = {
   title: string;
   description: string;
   icon: React.ComponentType<{ className?: string }>;
-  group: string;
-  accent: string; // tailwind classes for icon background
   render: () => JSX.Element;
 };
 
-const MODULES: ModuleDef[] = [
-  // Vue d'ensemble
+type GroupDef = {
+  id: string;
+  label: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  logo?: string;
+  modules: ModuleDef[];
+};
+
+const GROUPS: GroupDef[] = [
   {
     id: "overview",
-    title: "Tableau de bord",
-    description: "KPIs, statistiques et graphiques globaux de la plateforme.",
-    icon: LayoutDashboard,
-    group: "Vue d'ensemble",
-    accent: "bg-primary/10 text-primary",
-    render: () => (
-      <div className="space-y-6">
-        <AdminStats />
-        <AdminKPICharts />
-        <AdminCharts />
-      </div>
-    ),
-  },
-  // MiPROJET Invest
-  {
-    id: "projects",
-    title: "MiPROJET Invest — Projets",
-    description: "Gérer les projets publiés sur l'espace investisseurs.",
-    icon: FolderKanban,
-    group: "MiPROJET Invest",
-    accent: "bg-emerald-100 text-emerald-700",
-    render: () => <AdminProjectsTable />,
+    label: "Vue d'ensemble",
+    logo: mpLogo,
+    modules: [
+      {
+        id: "overview",
+        title: "Tableau de bord",
+        description: "KPIs, statistiques et graphiques globaux.",
+        icon: LayoutDashboard,
+        render: () => (
+          <div className="space-y-6">
+            <AdminStats />
+            <AdminKPICharts />
+            <AdminCharts />
+          </div>
+        ),
+      },
+    ],
   },
   {
-    id: "investor-prospects",
-    title: "Prospects investisseurs",
-    description: "Contacts et manifestations d'intérêt des investisseurs.",
-    icon: Briefcase,
-    group: "MiPROJET Invest",
-    accent: "bg-emerald-100 text-emerald-700",
-    render: () => <AdminInvestorProspects />,
+    id: "mp-go",
+    label: "MiPROJET Go",
+    logo: mpGoLogo,
+    modules: [
+      { id: "users", title: "Utilisateurs", description: "Comptes, rôles et abonnements.", icon: Users, render: () => <AdminUsersTable /> },
+      { id: "subscriptions", title: "Abonnements", description: "Plans, souscriptions et cycles.", icon: CreditCard, render: () => <AdminSubscriptionsManager /> },
+      { id: "referrals", title: "Parrainages", description: "Programme de parrainage.", icon: Gift, render: () => <AdminReferralsManager /> },
+    ],
   },
   {
-    id: "opportunities",
-    title: "Opportunités & Scraper",
-    description: "Publier des opportunités et scanner le web (Firecrawl).",
-    icon: Sparkles,
-    group: "MiPROJET Invest",
-    accent: "bg-emerald-100 text-emerald-700",
-    render: () => (
-      <div className="space-y-6">
-        <AdminOpportunitiesManager />
-        <div className="pt-4 border-t">
-          <AdminFirecrawlScraper />
-        </div>
-      </div>
-    ),
+    id: "mp-plus",
+    label: "MiPROJET+",
+    logo: mpPlusLogo,
+    modules: [
+      { id: "mp-overview", title: "Projets & scores", description: "Vue complète MiPROJET+.", icon: TrendingUp, render: () => <AdminMPOverview /> },
+      { id: "mp-analytics", title: "Analytiques", description: "Analytique d'usage MiPROJET+.", icon: BarChart3, render: () => <AdminMPAnalytics /> },
+      { id: "mp-certifications", title: "Certifications", description: "Gérer les certifications émises.", icon: Award, render: () => <AdminMPCertificationsManager /> },
+      { id: "evaluations", title: "Évaluations", description: "Résultats de scoring et évaluations.", icon: ShieldCheck, render: () => <AdminEvaluationsManager /> },
+      {
+        id: "requests",
+        title: "Demandes de services",
+        description: "Structuration, accompagnement, accès projets.",
+        icon: Handshake,
+        render: () => (
+          <div className="space-y-8">
+            <div><h3 className="font-semibold mb-3">Demandes de services</h3><AdminRequestsTable /></div>
+            <div><h3 className="font-semibold mb-3">Demandes d'accès</h3><AdminAccessRequests /></div>
+          </div>
+        ),
+      },
+    ],
   },
   {
-    id: "tenders",
-    title: "Appels d'offres",
-    description: "Import et gestion des appels d'offres (zone UEMOA).",
-    icon: ClipboardCheck,
-    group: "MiPROJET Invest",
-    accent: "bg-emerald-100 text-emerald-700",
-    render: () => <AdminTendersManager />,
+    id: "mp-invest",
+    label: "MiPROJET Invest",
+    logo: mpInvestLogo,
+    modules: [
+      { id: "mp-sync", title: "Synchronisation MP+ ↔ Invest", description: "Publier les projets MiPROJET+ vers Invest.", icon: RefreshCcw, render: () => <AdminMPInvestSync /> },
+      { id: "projects", title: "Projets publiés", description: "Gérer les projets Invest.", icon: FolderKanban, render: () => <AdminProjectsTable /> },
+      { id: "investor-prospects", title: "Prospects investisseurs", description: "Contacts et manifestations d'intérêt.", icon: Briefcase, render: () => <AdminInvestorProspects /> },
+      {
+        id: "opportunities",
+        title: "Opportunités & Scraper",
+        description: "Publier des opportunités et scanner le web.",
+        icon: Sparkles,
+        render: () => (
+          <div className="space-y-6">
+            <AdminOpportunitiesManager />
+            <div className="pt-4 border-t"><AdminFirecrawlScraper /></div>
+          </div>
+        ),
+      },
+      { id: "tenders", title: "Appels d'offres", description: "Import massif et gestion des AO.", icon: ClipboardCheck, render: () => <AdminTendersManager /> },
+      { id: "tender-leads", title: "Leads AO", description: "Prospects intéressés par les AO.", icon: UserPlus, render: () => <AdminTenderLeadsManager /> },
+    ],
   },
   {
-    id: "tender-leads",
-    title: "Leads appels d'offres",
-    description: "Prospects intéressés par les appels d'offres.",
-    icon: UserPlus,
-    group: "MiPROJET Invest",
-    accent: "bg-emerald-100 text-emerald-700",
-    render: () => <AdminTenderLeadsManager />,
-  },
-  // MiPROJET+
-  {
-    id: "mp-sync",
-    title: "Synchronisation MiPROJET+ ↔ Invest",
-    description: "Publier les projets MiPROJET+ vers l'espace investisseurs.",
-    icon: RefreshCcw,
-    group: "MiPROJET+",
-    accent: "bg-blue-100 text-blue-700",
-    render: () => <AdminMPInvestSync />,
-  },
-  {
-    id: "mp-overview",
-    title: "MiPROJET+ — Projets & scores",
-    description: "Vue complète des projets et scoring MiPROJET+.",
-    icon: TrendingUp,
-    group: "MiPROJET+",
-    accent: "bg-blue-100 text-blue-700",
-    render: () => <AdminMPOverview />,
-  },
-  {
-    id: "mp-analytics",
-    title: "MiPROJET+ — Analytics",
-    description: "Analytique d'usage MiPROJET+.",
-    icon: BarChart3,
-    group: "MiPROJET+",
-    accent: "bg-blue-100 text-blue-700",
-    render: () => <AdminMPAnalytics />,
-  },
-  {
-    id: "mp-certifications",
-    title: "Certifications",
-    description: "Gérer les certifications émises.",
-    icon: Award,
-    group: "MiPROJET+",
-    accent: "bg-blue-100 text-blue-700",
-    render: () => <AdminMPCertificationsManager />,
-  },
-  {
-    id: "evaluations",
-    title: "Évaluations projets",
-    description: "Résultats de scoring et évaluations.",
-    icon: ShieldCheck,
-    group: "MiPROJET+",
-    accent: "bg-blue-100 text-blue-700",
-    render: () => <AdminEvaluationsManager />,
-  },
-  // Utilisateurs & CRM
-  {
-    id: "users",
-    title: "Utilisateurs",
-    description: "Comptes, rôles et abonnements.",
-    icon: Users,
-    group: "Utilisateurs & CRM",
-    accent: "bg-purple-100 text-purple-700",
-    render: () => <AdminUsersTable />,
-  },
-  {
-    id: "leads",
-    title: "Leads & prospects",
-    description: "Formulaires, contacts et pipeline.",
-    icon: UserPlus,
-    group: "Utilisateurs & CRM",
-    accent: "bg-purple-100 text-purple-700",
-    render: () => <AdminLeadsManager />,
-  },
-  {
-    id: "subscriptions",
-    title: "Abonnements",
-    description: "Plans, souscriptions et cycles.",
-    icon: CreditCard,
-    group: "Utilisateurs & CRM",
-    accent: "bg-purple-100 text-purple-700",
-    render: () => <AdminSubscriptionsManager />,
-  },
-  {
-    id: "referrals",
-    title: "Parrainages",
-    description: "Programme de parrainage.",
-    icon: Gift,
-    group: "Utilisateurs & CRM",
-    accent: "bg-purple-100 text-purple-700",
-    render: () => <AdminReferralsManager />,
-  },
-  {
-    id: "testimonials",
-    title: "Témoignages",
-    description: "Modérer les témoignages publiés.",
-    icon: MessageSquareQuote,
-    group: "Utilisateurs & CRM",
-    accent: "bg-purple-100 text-purple-700",
-    render: () => <AdminTestimonialsManager />,
-  },
-  // Demandes & services
-  {
-    id: "requests",
-    title: "Demandes de services",
-    description: "Structuration, accompagnement, accès projets.",
-    icon: Handshake,
-    group: "Demandes & services",
-    accent: "bg-amber-100 text-amber-700",
-    render: () => (
-      <div className="space-y-8">
-        <div>
-          <h3 className="font-semibold mb-3">Demandes de services</h3>
-          <AdminRequestsTable />
-        </div>
-        <div>
-          <h3 className="font-semibold mb-3">Demandes d'accès</h3>
-          <AdminAccessRequests />
-        </div>
-      </div>
-    ),
-  },
-  // Facturation
-  {
-    id: "invoices",
-    title: "Factures",
-    description: "Liste, génération et suivi des envois.",
-    icon: Receipt,
-    group: "Facturation",
-    accent: "bg-rose-100 text-rose-700",
-    render: () => (
-      <div className="space-y-8">
-        <AdminInvoicesTable />
-        <div className="pt-4 border-t">
-          <SmartInvoiceGenerator />
-        </div>
-        <div className="pt-4 border-t">
-          <AdminInvoiceSendLog />
-        </div>
-      </div>
-    ),
-  },
-  {
-    id: "payments",
-    title: "Paiements",
-    description: "Journal des paiements reçus.",
-    icon: CreditCard,
-    group: "Facturation",
-    accent: "bg-rose-100 text-rose-700",
-    render: () => <AdminPaymentsJournal />,
-  },
-  // Contenu
-  {
-    id: "news",
-    title: "Actualités",
-    description: "Créer et publier des articles.",
-    icon: Newspaper,
-    group: "Contenu",
-    accent: "bg-cyan-100 text-cyan-700",
-    render: () => <AdminNewsManager />,
-  },
-  {
-    id: "faq",
-    title: "FAQ",
-    description: "Foire aux questions.",
-    icon: HelpCircle,
-    group: "Contenu",
-    accent: "bg-cyan-100 text-cyan-700",
-    render: () => <AdminFAQManager />,
-  },
-  {
-    id: "documents",
-    title: "Documents plateforme",
-    description: "Documents publics et internes.",
-    icon: Files,
-    group: "Contenu",
-    accent: "bg-cyan-100 text-cyan-700",
-    render: () => <AdminDocumentsManager />,
-  },
-  // Communication
-  {
-    id: "emails",
-    title: "Emailing & campagnes",
-    description: "Campagnes, templates et journal des envois.",
+    id: "crm",
+    label: "CRM & Communication",
     icon: Mail,
-    group: "Communication",
-    accent: "bg-indigo-100 text-indigo-700",
-    render: () => <AdminEmailMarketing />,
+    modules: [
+      { id: "leads", title: "Leads & prospects", description: "Formulaires, contacts et pipeline.", icon: UserPlus, render: () => <AdminLeadsManager /> },
+      { id: "emails", title: "Emailing & campagnes", description: "Campagnes, templates et journal.", icon: Mail, render: () => <AdminEmailMarketing /> },
+      { id: "testimonials", title: "Témoignages", description: "Modérer les témoignages publiés.", icon: MessageSquareQuote, render: () => <AdminTestimonialsManager /> },
+    ],
   },
-  // Système
   {
-    id: "settings",
-    title: "Paramètres",
-    description: "Configuration générale de la plateforme.",
+    id: "content",
+    label: "Contenu",
+    icon: Newspaper,
+    modules: [
+      { id: "news", title: "Actualités", description: "Créer et publier des articles.", icon: Newspaper, render: () => <AdminNewsManager /> },
+      { id: "faq", title: "FAQ", description: "Foire aux questions.", icon: HelpCircle, render: () => <AdminFAQManager /> },
+      { id: "documents", title: "Documents plateforme", description: "Documents publics et internes.", icon: Files, render: () => <AdminDocumentsManager /> },
+    ],
+  },
+  {
+    id: "finance",
+    label: "Facturation",
+    icon: Receipt,
+    modules: [
+      {
+        id: "invoices", title: "Factures", description: "Liste, génération et suivi.", icon: Receipt,
+        render: () => (
+          <div className="space-y-8">
+            <AdminInvoicesTable />
+            <div className="pt-4 border-t"><SmartInvoiceGenerator /></div>
+            <div className="pt-4 border-t"><AdminInvoiceSendLog /></div>
+          </div>
+        ),
+      },
+      { id: "payments", title: "Paiements", description: "Journal des paiements reçus.", icon: CreditCard, render: () => <AdminPaymentsJournal /> },
+    ],
+  },
+  {
+    id: "system",
+    label: "Système",
     icon: Settings,
-    group: "Système",
-    accent: "bg-slate-100 text-slate-700",
-    render: () => <AdminSettingsManager />,
-  },
-  {
-    id: "database",
-    title: "Base de données & sauvegardes",
-    description: "Backups, exports, entretien.",
-    icon: Database,
-    group: "Système",
-    accent: "bg-slate-100 text-slate-700",
-    render: () => <AdminDatabaseManager />,
-  },
-  {
-    id: "maintenance",
-    title: "Maintenance",
-    description: "Tâches et journaux de maintenance.",
-    icon: Wrench,
-    group: "Système",
-    accent: "bg-slate-100 text-slate-700",
-    render: () => <AdminMaintenanceManager />,
-  },
-  {
-    id: "admin-guide",
-    title: "Guide administrateur",
-    description: "Documentation interne.",
-    icon: GraduationCap,
-    group: "Système",
-    accent: "bg-slate-100 text-slate-700",
-    render: () => <AdminGuide />,
+    modules: [
+      { id: "settings", title: "Paramètres", description: "Configuration générale.", icon: Settings, render: () => <AdminSettingsManager /> },
+      { id: "database", title: "Base de données", description: "Backups, exports, entretien.", icon: Database, render: () => <AdminDatabaseManager /> },
+      { id: "maintenance", title: "Maintenance", description: "Tâches et journaux.", icon: Wrench, render: () => <AdminMaintenanceManager /> },
+      { id: "admin-guide", title: "Guide administrateur", description: "Documentation interne.", icon: GraduationCap, render: () => <AdminGuide /> },
+    ],
   },
 ];
 
-const GROUPS = Array.from(new Set(MODULES.map((m) => m.group)));
+const ALL_MODULES = GROUPS.flatMap((g) => g.modules.map((m) => ({ ...m, groupId: g.id, groupLabel: g.label })));
 
 const AdminDashboard = () => {
   const { user, isAdmin, loading, adminChecked, signOut } = useAuth();
   const navigate = useNavigate();
-  const [openId, setOpenId] = useState<string | null>("overview");
+  const [activeId, setActiveId] = useState<string>("overview");
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [q, setQ] = useState("");
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     document.title = "Administration | MIPROJET";
@@ -366,23 +218,26 @@ const AdminDashboard = () => {
     }
   }, [loading, adminChecked, user, isAdmin, navigate]);
 
-  const filtered = useMemo(() => {
-    if (!q.trim()) return MODULES;
-    const s = q.toLowerCase();
-    return MODULES.filter(
-      (m) =>
-        m.title.toLowerCase().includes(s) ||
-        m.description.toLowerCase().includes(s) ||
-        m.group.toLowerCase().includes(s)
-    );
-  }, [q]);
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpenGroup(null);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, []);
 
-  const grouped = useMemo(() => {
-    const map: Record<string, ModuleDef[]> = {};
-    for (const g of GROUPS) map[g] = [];
-    for (const m of filtered) map[m.group].push(m);
-    return map;
-  }, [filtered]);
+  const activeModule = useMemo(
+    () => ALL_MODULES.find((m) => m.id === activeId) || ALL_MODULES[0],
+    [activeId]
+  );
+
+  const searchResults = useMemo(() => {
+    if (!q.trim()) return [];
+    const s = q.toLowerCase();
+    return ALL_MODULES.filter(
+      (m) => m.title.toLowerCase().includes(s) || m.description.toLowerCase().includes(s) || m.groupLabel.toLowerCase().includes(s)
+    ).slice(0, 8);
+  }, [q]);
 
   if (loading || !adminChecked) {
     return (
@@ -393,21 +248,27 @@ const AdminDashboard = () => {
   }
   if (!user || !isAdmin) return null;
 
-  const toggle = (id: string) => setOpenId((cur) => (cur === id ? null : id));
+  const selectModule = (id: string) => {
+    setActiveId(id);
+    setOpenGroup(null);
+    setQ("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   return (
     <div className="min-h-screen bg-muted/30">
+      {/* Top brand bar */}
       <header
-        className="sticky top-0 h-16 border-b border-white/10 z-40 flex items-center px-3 sm:px-6 text-white shadow-elegant"
+        className="sticky top-0 z-50 text-white shadow-elegant"
         style={{ background: "var(--gradient-brand)" }}
       >
-        <div className="flex items-center gap-2 min-w-0">
-          <LayoutDashboard className="h-5 w-5 sm:h-6 sm:w-6 text-white shrink-0" />
-          <span className="font-bold text-base sm:text-xl truncate">MIPROJET Admin</span>
-        </div>
+        <div className="h-14 px-3 sm:px-6 flex items-center gap-4 border-b border-white/10">
+          <div className="flex items-center gap-2 min-w-0">
+            <img src={mpLogo} alt="MIPROJET" className="h-8 w-8 rounded bg-white/10 p-1 object-contain" />
+            <span className="font-bold text-base sm:text-lg truncate">MIPROJET Admin</span>
+          </div>
 
-        <div className="hidden md:block flex-1 max-w-md mx-6">
-          <div className="relative">
+          <div className="hidden md:block flex-1 max-w-md mx-4 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/70" />
             <Input
               value={q}
@@ -415,103 +276,128 @@ const AdminDashboard = () => {
               placeholder="Rechercher un module…"
               className="pl-10 bg-white/15 border-white/20 text-white placeholder:text-white/70 focus-visible:ring-white/40"
             />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 sm:gap-4 ml-auto">
-          <NotificationBell />
-          <div className="hidden sm:flex items-center gap-3">
-            <div className="text-right">
-              <p className="text-xs sm:text-sm font-medium text-white truncate max-w-[160px]">{user?.email}</p>
-              <Badge variant="secondary" className="text-[10px] bg-white/20 text-white border-0">Admin</Badge>
-            </div>
-          </div>
-          <Button variant="ghost" size="icon" onClick={signOut} className="text-white hover:bg-white/10">
-            <LogOut className="h-4 w-4" />
-          </Button>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto p-4 sm:p-6 space-y-8">
-        <div className="md:hidden">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Rechercher un module…"
-              className="pl-10"
-            />
-          </div>
-        </div>
-
-        {GROUPS.map((group) => {
-          const items = grouped[group];
-          if (!items || items.length === 0) return null;
-          return (
-            <section key={group} className="space-y-3">
-              <div className="flex items-center gap-3">
-                <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                  {group}
-                </h2>
-                <span className="flex-1 h-px bg-border" />
-                <span className="text-xs text-muted-foreground">{items.length}</span>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {items.map((m) => {
-                  const open = openId === m.id;
+            {searchResults.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-popover text-popover-foreground border rounded-lg shadow-lg overflow-hidden">
+                {searchResults.map((m) => {
                   const Icon = m.icon;
                   return (
-                    <Card
+                    <button
                       key={m.id}
-                      className={`transition-all cursor-pointer hover:shadow-md ${
-                        open ? "ring-2 ring-primary shadow-lg lg:col-span-3 md:col-span-2" : ""
-                      }`}
-                      onClick={() => !open && toggle(m.id)}
+                      onClick={() => selectModule(m.id)}
+                      className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-muted text-sm"
                     >
-                      <CardHeader
-                        className="flex flex-row items-start gap-3 space-y-0"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggle(m.id);
-                        }}
-                      >
-                        <div className={`p-2.5 rounded-lg ${m.accent} shrink-0`}>
-                          <Icon className="h-5 w-5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <CardTitle className="text-base flex items-center justify-between gap-2">
-                            <span className="truncate">{m.title}</span>
-                            <ChevronDown
-                              className={`h-4 w-4 text-muted-foreground transition-transform shrink-0 ${
-                                open ? "rotate-180" : ""
-                              }`}
-                            />
-                          </CardTitle>
-                          <CardDescription className="text-xs mt-1">
-                            {m.description}
-                          </CardDescription>
-                        </div>
-                      </CardHeader>
-                      {open && (
-                        <CardContent className="border-t pt-6" onClick={(e) => e.stopPropagation()}>
-                          {m.render()}
-                        </CardContent>
-                      )}
-                    </Card>
+                      <Icon className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{m.title}</p>
+                        <p className="text-xs text-muted-foreground truncate">{m.groupLabel}</p>
+                      </div>
+                    </button>
                   );
                 })}
               </div>
-            </section>
-          );
-        })}
+            )}
+          </div>
 
-        {filtered.length === 0 && (
-          <p className="text-center text-sm text-muted-foreground py-12">
-            Aucun module ne correspond à « {q} ».
-          </p>
+          <div className="flex items-center gap-2 sm:gap-3 ml-auto">
+            <NotificationBell />
+            <div className="hidden sm:block text-right">
+              <p className="text-xs font-medium truncate max-w-[160px]">{user?.email}</p>
+              <Badge variant="secondary" className="text-[10px] bg-white/20 text-white border-0">Admin</Badge>
+            </div>
+            <Button variant="ghost" size="icon" onClick={signOut} className="text-white hover:bg-white/10">
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Horizontal group nav */}
+        <nav ref={menuRef} className="px-3 sm:px-6 h-12 flex items-center gap-1 overflow-x-auto scrollbar-thin">
+          {GROUPS.map((g) => {
+            const GIcon = g.icon;
+            const isActiveGroup = g.modules.some((m) => m.id === activeId);
+            const isOpen = openGroup === g.id;
+            return (
+              <div key={g.id} className="relative shrink-0">
+                <button
+                  onClick={() => setOpenGroup(isOpen ? null : g.id)}
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap",
+                    isActiveGroup ? "bg-white/20 text-white" : "text-white/80 hover:bg-white/10"
+                  )}
+                >
+                  {g.logo ? (
+                    <img src={g.logo} alt="" className="h-5 w-5 object-contain rounded bg-white/90 p-0.5" />
+                  ) : GIcon ? (
+                    <GIcon className="h-4 w-4" />
+                  ) : null}
+                  <span>{g.label}</span>
+                  {g.modules.length > 1 && (
+                    <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", isOpen && "rotate-180")} />
+                  )}
+                </button>
+                {isOpen && g.modules.length > 1 && (
+                  <div className="absolute top-full left-0 mt-1 min-w-[260px] bg-popover text-popover-foreground border rounded-lg shadow-xl overflow-hidden z-50">
+                    {g.modules.map((m) => {
+                      const Icon = m.icon;
+                      const isSel = m.id === activeId;
+                      return (
+                        <button
+                          key={m.id}
+                          onClick={() => selectModule(m.id)}
+                          className={cn(
+                            "w-full flex items-start gap-3 px-3 py-2.5 text-left text-sm hover:bg-muted transition-colors",
+                            isSel && "bg-primary/10 text-primary"
+                          )}
+                        >
+                          <Icon className="h-4 w-4 mt-0.5 shrink-0" />
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{m.title}</p>
+                            <p className="text-xs text-muted-foreground truncate">{m.description}</p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                {isOpen && g.modules.length === 1 && selectModule(g.modules[0].id) as any}
+              </div>
+            );
+          })}
+        </nav>
+      </header>
+
+      {/* Mobile search */}
+      <div className="md:hidden px-4 pt-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher…" className="pl-10" />
+        </div>
+        {searchResults.length > 0 && (
+          <div className="mt-2 border rounded-lg bg-card overflow-hidden">
+            {searchResults.map((m) => {
+              const Icon = m.icon;
+              return (
+                <button key={m.id} onClick={() => selectModule(m.id)} className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-muted text-sm">
+                  <Icon className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">{m.title}</span>
+                  <span className="text-xs text-muted-foreground ml-auto">{m.groupLabel}</span>
+                </button>
+              );
+            })}
+          </div>
         )}
+      </div>
+
+      {/* Breadcrumb + module content */}
+      <main className="max-w-7xl mx-auto p-4 sm:p-6">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+          <span>{activeModule.groupLabel}</span>
+          <span>/</span>
+          <span className="font-medium text-foreground">{activeModule.title}</span>
+        </div>
+        <div className="bg-card rounded-xl border shadow-sm p-4 sm:p-6">
+          {activeModule.render()}
+        </div>
       </main>
     </div>
   );
