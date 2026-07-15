@@ -362,8 +362,8 @@ const AdminDashboard = () => {
                     })}
                   </div>
                 )}
-                {isOpen && g.modules.length === 1 && selectModule(g.modules[0].id) as any}
               </div>
+
             );
           })}
         </nav>
