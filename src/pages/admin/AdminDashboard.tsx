@@ -14,10 +14,14 @@ import {
   UserPlus, Mail, GraduationCap, Gift, Database, Handshake, RefreshCcw,
   Files, Briefcase, TrendingUp,
 } from "lucide-react";
-import mpLogo from "@/assets/logos/miprojet.png";
-import mpGoLogo from "@/assets/logos/miprojet-go.png";
-import mpPlusLogo from "@/assets/logos/miprojet-plus.png";
-import mpInvestLogo from "@/assets/logos/miprojet-invest.png";
+import mpLogoAsset from "@/assets/logos/miprojet.png.asset.json";
+import mpGoLogoAsset from "@/assets/logos/miprojet-go.png.asset.json";
+import mpPlusLogoAsset from "@/assets/logos/miprojet-plus.png.asset.json";
+import mpInvestLogoAsset from "@/assets/logos/miprojet-invest.png.asset.json";
+const mpLogo = mpLogoAsset.url;
+const mpGoLogo = mpGoLogoAsset.url;
+const mpPlusLogo = mpPlusLogoAsset.url;
+const mpInvestLogo = mpInvestLogoAsset.url;
 import { AdminStats } from "@/components/admin/AdminStats";
 import { AdminProjectsTable } from "@/components/admin/AdminProjectsTable";
 import { AdminUsersTable } from "@/components/admin/AdminUsersTable";
