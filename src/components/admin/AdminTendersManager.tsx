@@ -93,6 +93,50 @@ const parseCSV = (text: string) => {
   return lines.filter((r) => r.some((x) => x.trim()));
 };
 
+// Universal parser: CSV, TSV, TXT, XLSX, XLS, JSON, JSONL.
+// Returns { header, rows } where rows are string[][] aligned to header.
+const parseAnyFile = async (file: File): Promise<{ header: string[]; rows: string[][] }> => {
+  const name = file.name.toLowerCase();
+  const isExcel = /\.(xlsx|xls|xlsm|ods)$/.test(name);
+  const isJson = /\.(json|jsonl|ndjson)$/.test(name);
+
+  if (isExcel) {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: "array" });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const aoa = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1, defval: "", raw: false, blankrows: false });
+    if (!aoa.length) return { header: [], rows: [] };
+    const header = (aoa[0] as any[]).map((h) => String(h ?? "").trim().toLowerCase());
+    const rows = aoa.slice(1).map((r) => (r as any[]).map((v) => (v == null ? "" : String(v))));
+    return { header, rows };
+  }
+
+  const text = await file.text();
+
+  if (isJson) {
+    let arr: any[] = [];
+    try {
+      const trimmed = text.trim();
+      if (trimmed.startsWith("[")) arr = JSON.parse(trimmed);
+      else arr = trimmed.split(/\r?\n/).filter(Boolean).map((l) => JSON.parse(l));
+    } catch (e) {
+      throw new Error("JSON invalide");
+    }
+    if (!arr.length) return { header: [], rows: [] };
+    const header = Array.from(new Set(arr.flatMap((o) => Object.keys(o || {})))).map((k) => k.toLowerCase());
+    const rows = arr.map((o) => header.map((k) => {
+      const v = o?.[k] ?? o?.[k.toUpperCase()] ?? "";
+      return v == null ? "" : String(v);
+    }));
+    return { header, rows };
+  }
+
+  // CSV/TSV/TXT — reuse CSV parser (delimiter auto-detected: , ; \t)
+  const parsed = parseCSV(text);
+  const header = parsed.shift()?.map((h) => h.trim().toLowerCase()) || [];
+  return { header, rows: parsed };
+};
+
 const parseDeadline = (s: string) => {
   const raw = (s || "").trim();
   if (!raw) return null;
