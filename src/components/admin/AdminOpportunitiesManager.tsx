@@ -117,13 +117,19 @@ export const AdminOpportunitiesManager = () => {
 
   useEffect(() => { fetchOpportunities(); }, [filterType, filterStatus]);
 
+  // Les colonnes contact_* et external_link sont protégées côté base (non lisibles
+  // directement) : on les récupère à la demande via la fonction sécurisée.
+  const LIST_COLUMNS =
+    "id,title,description,content,opportunity_type,category,image_url,deadline,location,eligibility,amount_min,amount_max,currency,is_featured,is_premium,is_active,status,views_count,published_at,author_id,author_name,short_slug,created_at,updated_at";
+
   const fetchOpportunities = async () => {
     setLoading(true);
-    let query = supabase.from('opportunities').select('*').order('created_at', { ascending: false });
+    let query = supabase.from('opportunities').select(LIST_COLUMNS).order('created_at', { ascending: false });
     if (filterType !== "all") query = query.eq('opportunity_type', filterType);
     if (filterStatus !== "all") query = query.eq('status', filterStatus);
-    const { data } = await query;
-    if (data) setOpportunities(data);
+    const { data, error } = await query;
+    if (error) toast({ title: "Erreur de chargement", description: error.message, variant: "destructive" });
+    if (data) setOpportunities(data as any);
     setLoading(false);
   };
 
@@ -255,7 +261,7 @@ export const AdminOpportunitiesManager = () => {
     setIsDialogOpen(false);
   };
 
-  const openEditDialog = (item: Opportunity) => {
+  const openEditDialog = async (item: Opportunity) => {
     setEditingItem(item);
     setFormData({
       title: item.title, organisme: "", opportunity_type: item.opportunity_type,
@@ -273,6 +279,17 @@ export const AdminOpportunitiesManager = () => {
       send_to_premium: false, publish_member_space: true, scheduled_date: "",
     });
     setIsDialogOpen(true);
+    // Récupération sécurisée des contacts (colonnes protégées)
+    const { data } = await supabase.rpc('get_opportunity_contacts', { p_id: item.id });
+    const row = Array.isArray(data) ? data[0] : null;
+    if (row) {
+      setFormData(prev => ({
+        ...prev,
+        external_link: row.external_link || prev.external_link,
+        contact_email: row.contact_email || prev.contact_email,
+        contact_phone: row.contact_phone || prev.contact_phone,
+      }));
+    }
   };
 
   const getStatusBadge = (status: string) => {

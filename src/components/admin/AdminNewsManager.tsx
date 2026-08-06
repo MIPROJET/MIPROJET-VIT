@@ -109,7 +109,7 @@ export const AdminNewsManager = () => {
 
     if (editingNews) {
       const { error } = await supabase.from('news').update(newsData).eq('id', editingNews.id);
-      if (error) { toast({ title: "Erreur", description: "Impossible de modifier", variant: "destructive" }); }
+      if (error) { toast({ title: "Impossible de modifier", description: error.message, variant: "destructive" }); }
       else {
         toast({ title: "Succès", description: "Actualité modifiée" });
         if (editingNews.status === 'published' && editingNews.short_slug) {
@@ -119,7 +119,7 @@ export const AdminNewsManager = () => {
       }
     } else {
       const { error } = await supabase.from('news').insert([newsData]);
-      if (error) { toast({ title: "Erreur", description: "Impossible de créer", variant: "destructive" }); }
+      if (error) { toast({ title: "Impossible de créer", description: error.message, variant: "destructive" }); }
       else { toast({ title: "Succès", description: "Actualité créée" }); fetchNews(); resetForm(); }
     }
   };

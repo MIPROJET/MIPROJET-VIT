@@ -1,0 +1,1 @@
+GRANT INSERT (external_link, contact_email, contact_phone), UPDATE (external_link, contact_email, contact_phone) ON public.opportunities TO authenticated;
