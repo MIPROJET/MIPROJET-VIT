@@ -261,7 +261,7 @@ export const AdminOpportunitiesManager = () => {
     setIsDialogOpen(false);
   };
 
-  const openEditDialog = (item: Opportunity) => {
+  const openEditDialog = async (item: Opportunity) => {
     setEditingItem(item);
     setFormData({
       title: item.title, organisme: "", opportunity_type: item.opportunity_type,
@@ -279,6 +279,17 @@ export const AdminOpportunitiesManager = () => {
       send_to_premium: false, publish_member_space: true, scheduled_date: "",
     });
     setIsDialogOpen(true);
+    // Récupération sécurisée des contacts (colonnes protégées)
+    const { data } = await supabase.rpc('get_opportunity_contacts', { p_id: item.id });
+    const row = Array.isArray(data) ? data[0] : null;
+    if (row) {
+      setFormData(prev => ({
+        ...prev,
+        external_link: row.external_link || prev.external_link,
+        contact_email: row.contact_email || prev.contact_email,
+        contact_phone: row.contact_phone || prev.contact_phone,
+      }));
+    }
   };
 
   const getStatusBadge = (status: string) => {
