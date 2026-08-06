@@ -227,19 +227,12 @@ export const AdminTendersManager = () => {
         await (supabase as any).from("tenders").delete().neq("id", "00000000-0000-0000-0000-000000000000");
       }
 
-      // Build index of existing tenders (id by key) AFTER wipe
-      const { data: existing } = await (supabase as any)
-        .from("tenders")
-        .select("id,notice_title,notice_deadline,country_code")
-        .limit(20000);
-      const existingMap = new Map<string, string>();
-      (existing || []).forEach((t: any) =>
-        existingMap.set(tenderKey(t.notice_title, t.notice_deadline, t.country_code || ""), t.id)
-      );
+      // Import haute capacité (100 000+ lignes) : pas d'index préalable en mémoire,
+      // on s'appuie sur la contrainte UNIQUE(notice_title, notice_deadline) via upsert.
       const fileSeen = new Set<string>();
-
-      let inserted = 0, updated = 0, skipped = 0;
-      const CHUNK = 1000;
+      let processed = 0, skipped = 0, failed = 0;
+      const CHUNK = 500;
+      const ignoreDuplicates = mode === "skip";
 
       const buildRow = (title: string, dl: string, iso: string) => {
         const cn = countryNameFromCode(iso);
@@ -258,84 +251,62 @@ export const AdminTendersManager = () => {
         };
       };
 
-      for (let i = 0; i < rows.length; i += CHUNK) {
-        const toInsert: any[] = [];
-        const toUpdate: { id: string; row: any }[] = [];
-
-        for (const r of rows.slice(i, i + CHUNK)) {
-          const title = pick(r, header, ["notice_title", "title", "titre", "objet"], 0);
-          const deadline = pick(r, header, ["notice_deadline", "deadline", "date limite", "date_limite"], 1);
-          const country = pick(r, header, ["country_code", "org_country", "country", "pays"], 2);
-          const dl = parseDeadline((deadline || "").trim());
-          if (!title || !dl) { skipped++; continue; }
-          const iso = normalizeCountryCode(country);
-          if (!iso) { skipped++; continue; }
-          if (!WEST_AFRICA.has(iso)) { skipped++; continue; }
-          const key = tenderKey(title, dl, iso);
-          if (fileSeen.has(key)) { skipped++; continue; }
-          fileSeen.add(key);
-          const row = buildRow(title, dl, iso);
-          const existingId = existingMap.get(key);
-          if (existingId) {
-            if (mode === "replace") toUpdate.push({ id: existingId, row });
-            else skipped++; // skip mode
-          } else {
-            toInsert.push(row);
-          }
-        }
-
-        if (toInsert.length) {
-          // Use upsert on the DB unique key (notice_title, notice_deadline) so collisions
-          // never abort the whole chunk. In "replace" mode we update existing rows;
-          // in "skip" mode we ignore duplicates.
-          const ignoreDuplicates = mode === "skip";
-          const { data: ins, error } = await (supabase as any)
+      const flush = async (batchRows: any[]) => {
+        if (!batchRows.length) return;
+        const { error } = await (supabase as any)
+          .from("tenders")
+          .upsert(batchRows, { onConflict: "notice_title,notice_deadline", ignoreDuplicates });
+        if (!error) { processed += batchRows.length; return; }
+        console.error("[tenders import upsert chunk]", error);
+        // Repli ligne par ligne : une ligne fautive ne bloque pas le lot
+        for (const row of batchRows) {
+          const { error: e1 } = await (supabase as any)
             .from("tenders")
-            .upsert(toInsert, { onConflict: "notice_title,notice_deadline", ignoreDuplicates })
-            .select("id,notice_title,notice_deadline,country_code");
-          if (error) {
-            console.error("[tenders import upsert chunk]", error);
-            // Fallback : retry row-by-row so a single bad row doesn't kill the chunk
-            for (const row of toInsert) {
-              const { data: one, error: e1 } = await (supabase as any)
-                .from("tenders")
-                .upsert(row, { onConflict: "notice_title,notice_deadline", ignoreDuplicates })
-                .select("id,notice_title,notice_deadline,country_code")
-                .maybeSingle();
-              if (e1) { console.error("[tenders import upsert row]", e1, row.notice_title); skipped++; }
-              else if (one) { inserted++; existingMap.set(tenderKey(one.notice_title, one.notice_deadline, one.country_code || ""), one.id); }
-              else skipped++;
-            }
-          } else {
-            inserted += ins?.length || 0;
-            (ins || []).forEach((t: any) => existingMap.set(tenderKey(t.notice_title, t.notice_deadline, t.country_code || ""), t.id));
-          }
+            .upsert(row, { onConflict: "notice_title,notice_deadline", ignoreDuplicates });
+          if (e1) failed++;
+          else processed++;
+        }
+      };
+
+      let pending: any[] = [];
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i];
+        const title = pick(r, header, ["notice_title", "title", "titre", "objet"], 0);
+        const deadline = pick(r, header, ["notice_deadline", "deadline", "date limite", "date_limite"], 1);
+        const country = pick(r, header, ["country_code", "org_country", "country", "pays"], 2);
+        const dl = parseDeadline((deadline || "").trim());
+        const iso = dl ? normalizeCountryCode(country) : "";
+        if (!title || !dl || !iso || !WEST_AFRICA.has(iso)) { skipped++; }
+        else {
+          const key = tenderKey(title, dl, iso);
+          if (fileSeen.has(key)) skipped++;
+          else { fileSeen.add(key); pending.push(buildRow(title, dl, iso)); }
         }
 
-
-        for (const u of toUpdate) {
-          const { error } = await (supabase as any).from("tenders").update({ ...u.row, updated_at: new Date().toISOString() }).eq("id", u.id);
-          if (error) {
-            console.error("[tenders import update]", error);
-            skipped++;
-          } else {
-            updated++;
-          }
+        if (pending.length >= CHUNK) {
+          await flush(pending);
+          pending = [];
+          setProgress(Math.min(99, Math.round(((i + 1) / rows.length) * 100)));
+          // rend la main au navigateur pour garder l'UI fluide sur 100k+ lignes
+          await new Promise((res) => setTimeout(res, 0));
         }
-
-        setProgress(Math.min(100, Math.round(((i + CHUNK) / rows.length) * 100)));
       }
+      await flush(pending);
+      setProgress(100);
 
       await (supabase as any).from("tender_import_batches").update({
-        imported_rows: inserted + updated,
-        duplicate_rows: skipped,
+        imported_rows: processed,
+        duplicate_rows: skipped + failed,
       }).eq("id", batch?.id);
 
-      setReport({ inserted, updated, skipped, total: rows.length, unique: fileSeen.size, eligible: preflight.eligible, outside: preflight.outside, invalid: preflight.invalid, duplicates: preflight.duplicates });
+      const inserted = processed;
+      const updated = 0;
+      setReport({ inserted, updated, skipped: skipped + failed, total: rows.length, unique: fileSeen.size, eligible: preflight.eligible, outside: preflight.outside, invalid: preflight.invalid, duplicates: preflight.duplicates });
       toast({
         title: "Import terminé",
-        description: `${inserted} ajouté(s) · ${updated} mis à jour · ${skipped} ignoré(s).`,
+        description: `${processed} enregistré(s) · ${skipped} ignoré(s)${failed ? ` · ${failed} en erreur` : ""}.`,
       });
+
 
       reload();
     } catch (e: any) {

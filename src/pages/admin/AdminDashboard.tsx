@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { createPortal } from "react-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -136,16 +137,19 @@ const GROUPS: GroupDef[] = [
       { id: "investor-prospects", title: "Prospects investisseurs", description: "Contacts et manifestations d'intérêt.", icon: Briefcase, render: () => <AdminInvestorProspects /> },
       {
         id: "opportunities",
-        title: "Opportunités & Scraper",
-        description: "Publier des opportunités et scanner le web.",
+        title: "Opportunités (éditeur)",
+        description: "Créer, modifier et publier les appels à projets.",
         icon: Sparkles,
-        render: () => (
-          <div className="space-y-6">
-            <AdminOpportunitiesManager />
-            <div className="pt-4 border-t"><AdminFirecrawlScraper /></div>
-          </div>
-        ),
+        render: () => <AdminOpportunitiesManager />,
       },
+      {
+        id: "scraper",
+        title: "Scraper web (Firecrawl)",
+        description: "Scanner le web pour détecter des opportunités.",
+        icon: Search,
+        render: () => <AdminFirecrawlScraper />,
+      },
+
       { id: "tenders", title: "Appels d'offres", description: "Import massif et gestion des AO.", icon: ClipboardCheck, render: () => <AdminTendersManager /> },
       { id: "tender-leads", title: "Leads AO", description: "Prospects intéressés par les AO.", icon: UserPlus, render: () => <AdminTenderLeadsManager /> },
     ],
@@ -206,11 +210,20 @@ const ALL_MODULES = GROUPS.flatMap((g) => g.modules.map((m) => ({ ...m, groupId:
 const AdminDashboard = () => {
   const { user, isAdmin, loading, adminChecked, signOut } = useAuth();
   const navigate = useNavigate();
-  const [activeId, setActiveId] = useState<string>("overview");
+  const location = useLocation();
+
+  // ---- Route unifiée : /me/admin/:moduleId (ou /admin/:moduleId) ----
+  const routeModuleId = useMemo(() => {
+    const seg = location.pathname.replace(/\/+$/, "").split("/").pop() || "";
+    return ALL_MODULES.some((m) => m.id === seg) ? seg : "overview";
+  }, [location.pathname]);
+  const activeId = routeModuleId;
+  const basePath = location.pathname.startsWith("/me/admin") ? "/me/admin" : "/admin";
+
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [anchor, setAnchor] = useState<{ left: number; top: number } | null>(null);
   const [q, setQ] = useState("");
-  const menuRef = useRef<HTMLDivElement>(null);
+  const closeTimer = useRef<number | null>(null);
 
   useEffect(() => {
     document.title = "Administration | MIPROJET";
@@ -223,12 +236,18 @@ const AdminDashboard = () => {
     }
   }, [loading, adminChecked, user, isAdmin, navigate]);
 
+  // Ferme le sous-menu au scroll / resize / Échap pour éviter tout panneau orphelin
   useEffect(() => {
-    const onClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpenGroup(null);
+    const close = () => setOpenGroup(null);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+      window.removeEventListener("keydown", onKey);
     };
-    document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
   const activeModule = useMemo(
@@ -236,11 +255,7 @@ const AdminDashboard = () => {
     [activeId]
   );
 
-  const openGroupModules = useMemo(
-    () => GROUPS.find((g) => g.id === openGroup)?.modules ?? [],
-    [openGroup]
-  );
-
+  const openGroupDef = useMemo(() => GROUPS.find((g) => g.id === openGroup) || null, [openGroup]);
 
   const searchResults = useMemo(() => {
     if (!q.trim()) return [];
@@ -249,6 +264,21 @@ const AdminDashboard = () => {
       (m) => m.title.toLowerCase().includes(s) || m.description.toLowerCase().includes(s) || m.groupLabel.toLowerCase().includes(s)
     ).slice(0, 8);
   }, [q]);
+
+  const cancelClose = () => {
+    if (closeTimer.current) { window.clearTimeout(closeTimer.current); closeTimer.current = null; }
+  };
+  const scheduleClose = () => {
+    cancelClose();
+    closeTimer.current = window.setTimeout(() => setOpenGroup(null), 220);
+  };
+
+  const openGroupAt = (groupId: string, el: HTMLElement) => {
+    cancelClose();
+    const r = el.getBoundingClientRect();
+    setAnchor({ left: r.left, top: r.bottom });
+    setOpenGroup(groupId);
+  };
 
   if (loading || !adminChecked) {
     return (
@@ -260,11 +290,58 @@ const AdminDashboard = () => {
   if (!user || !isAdmin) return null;
 
   const selectModule = (id: string) => {
-    setActiveId(id);
     setOpenGroup(null);
     setQ("");
+    navigate(`${basePath}/${id}`);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  // Panneau de sous-menu rendu dans un portail : jamais coupé, toujours au-dessus,
+  // grille multi-colonnes pour afficher toutes les entrées sans scroll.
+  const submenu =
+    openGroupDef && openGroupDef.modules.length > 1 && anchor
+      ? createPortal(
+          <div
+            className="fixed z-[9999] bg-popover text-popover-foreground border rounded-xl shadow-2xl p-2 animate-in fade-in-0 zoom-in-95"
+            style={{
+              left: Math.max(8, Math.min(anchor.left, window.innerWidth - Math.min(760, window.innerWidth - 16) - 8)),
+              top: anchor.top + 4,
+              width: Math.min(openGroupDef.modules.length > 3 ? 720 : 340, window.innerWidth - 16),
+              maxHeight: `calc(100vh - ${anchor.top + 24}px)`,
+              overflowY: "auto",
+            }}
+            onMouseEnter={cancelClose}
+            onMouseLeave={scheduleClose}
+          >
+            <p className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {openGroupDef.label}
+            </p>
+            <div className={cn("grid gap-1", openGroupDef.modules.length > 3 ? "sm:grid-cols-2" : "grid-cols-1")}>
+              {openGroupDef.modules.map((m) => {
+                const Icon = m.icon;
+                const isSel = m.id === activeId;
+                return (
+                  <button
+                    key={m.id}
+                    onClick={() => selectModule(m.id)}
+                    className={cn(
+                      "w-full flex items-start gap-3 px-3 py-2.5 rounded-lg text-left text-sm hover:bg-muted transition-colors",
+                      isSel && "bg-primary/10 text-primary"
+                    )}
+                  >
+                    <Icon className="h-4 w-4 mt-0.5 shrink-0" />
+                    <span className="min-w-0">
+                      <span className="block font-medium truncate">{m.title}</span>
+                      <span className="block text-xs text-muted-foreground line-clamp-2">{m.description}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>,
+          document.body
+        )
+      : null;
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -288,7 +365,7 @@ const AdminDashboard = () => {
               className="pl-10 bg-white/15 border-white/20 text-white placeholder:text-white/70 focus-visible:ring-white/40"
             />
             {searchResults.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-popover text-popover-foreground border rounded-lg shadow-lg overflow-hidden">
+              <div className="absolute top-full left-0 right-0 mt-2 z-[9999] bg-popover text-popover-foreground border rounded-lg shadow-lg overflow-hidden">
                 {searchResults.map((m) => {
                   const Icon = m.icon;
                   return (
@@ -321,11 +398,10 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Horizontal group nav — sous-menus au survol, en premier plan */}
+        {/* Menu latéral horizontal — sous-menus au survol, rendus en portail */}
         <nav
-          ref={menuRef}
           className="px-3 sm:px-6 h-12 flex items-center gap-1 overflow-x-auto scrollbar-thin"
-          onMouseLeave={() => setOpenGroup(null)}
+          onMouseLeave={scheduleClose}
         >
           {GROUPS.map((g) => {
             const GIcon = g.icon;
@@ -336,19 +412,15 @@ const AdminDashboard = () => {
                 key={g.id}
                 className="relative shrink-0"
                 onMouseEnter={(e) => {
-                  if (g.modules.length > 1) {
-                    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                    setAnchor({ left: r.left, top: r.bottom });
-                    setOpenGroup(g.id);
-                  } else {
-                    setOpenGroup(null);
-                  }
+                  if (g.modules.length > 1) openGroupAt(g.id, e.currentTarget as HTMLElement);
+                  else { cancelClose(); setOpenGroup(null); }
                 }}
               >
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
                     if (g.modules.length === 1) selectModule(g.modules[0].id);
-                    else setOpenGroup(isOpen ? null : g.id);
+                    else if (isOpen) setOpenGroup(null);
+                    else openGroupAt(g.id, e.currentTarget.parentElement as HTMLElement);
                   }}
                   className={cn(
                     "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap",
@@ -369,38 +441,9 @@ const AdminDashboard = () => {
             );
           })}
         </nav>
-
-        {/* Panneau du sous-menu : position fixe pour ne jamais être coupé */}
-        {openGroupModules.length > 1 && anchor && (
-          <div
-            className="fixed z-[200] min-w-[280px] max-w-[340px] max-h-[70vh] overflow-y-auto bg-popover text-popover-foreground border rounded-xl shadow-2xl py-1"
-            style={{ left: Math.min(anchor.left, window.innerWidth - 350), top: anchor.top + 4 }}
-            onMouseEnter={() => setOpenGroup(openGroup)}
-            onMouseLeave={() => setOpenGroup(null)}
-          >
-            {openGroupModules.map((m) => {
-              const Icon = m.icon;
-              const isSel = m.id === activeId;
-              return (
-                <button
-                  key={m.id}
-                  onClick={() => selectModule(m.id)}
-                  className={cn(
-                    "w-full flex items-start gap-3 px-3 py-2.5 text-left text-sm hover:bg-muted transition-colors",
-                    isSel && "bg-primary/10 text-primary"
-                  )}
-                >
-                  <Icon className="h-4 w-4 mt-0.5 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="font-medium">{m.title}</p>
-                    <p className="text-xs text-muted-foreground">{m.description}</p>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
       </header>
+
+      {submenu}
 
       {/* Mobile search */}
       <div className="md:hidden px-4 pt-4">
@@ -424,9 +467,11 @@ const AdminDashboard = () => {
         )}
       </div>
 
-      {/* Breadcrumb + module content */}
+      {/* Sous-page : fil d'Ariane + contenu du module */}
       <main className="max-w-7xl mx-auto p-4 sm:p-6">
         <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+          <button onClick={() => selectModule("overview")} className="hover:text-foreground">Admin</button>
+          <span>/</span>
           <span>{activeModule.groupLabel}</span>
           <span>/</span>
           <span className="font-medium text-foreground">{activeModule.title}</span>
@@ -440,3 +485,4 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
+
