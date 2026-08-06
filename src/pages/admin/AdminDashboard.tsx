@@ -208,6 +208,7 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const [activeId, setActiveId] = useState<string>("overview");
   const [openGroup, setOpenGroup] = useState<string | null>(null);
+  const [anchor, setAnchor] = useState<{ left: number; top: number } | null>(null);
   const [q, setQ] = useState("");
   const menuRef = useRef<HTMLDivElement>(null);
 
