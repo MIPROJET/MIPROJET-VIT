@@ -236,6 +236,12 @@ const AdminDashboard = () => {
     [activeId]
   );
 
+  const openGroupModules = useMemo(
+    () => GROUPS.find((g) => g.id === openGroup)?.modules ?? [],
+    [openGroup]
+  );
+
+
   const searchResults = useMemo(() => {
     if (!q.trim()) return [];
     const s = q.toLowerCase();
