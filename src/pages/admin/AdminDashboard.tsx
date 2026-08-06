@@ -314,14 +314,30 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Horizontal group nav */}
-        <nav ref={menuRef} className="px-3 sm:px-6 h-12 flex items-center gap-1 overflow-x-auto scrollbar-thin">
+        {/* Horizontal group nav — sous-menus au survol, en premier plan */}
+        <nav
+          ref={menuRef}
+          className="px-3 sm:px-6 h-12 flex items-center gap-1 overflow-x-auto scrollbar-thin"
+          onMouseLeave={() => setOpenGroup(null)}
+        >
           {GROUPS.map((g) => {
             const GIcon = g.icon;
             const isActiveGroup = g.modules.some((m) => m.id === activeId);
             const isOpen = openGroup === g.id;
             return (
-              <div key={g.id} className="relative shrink-0">
+              <div
+                key={g.id}
+                className="relative shrink-0"
+                onMouseEnter={(e) => {
+                  if (g.modules.length > 1) {
+                    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                    setAnchor({ left: r.left, top: r.bottom });
+                    setOpenGroup(g.id);
+                  } else {
+                    setOpenGroup(null);
+                  }
+                }}
+              >
                 <button
                   onClick={() => {
                     if (g.modules.length === 1) selectModule(g.modules[0].id);
@@ -329,7 +345,7 @@ const AdminDashboard = () => {
                   }}
                   className={cn(
                     "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap",
-                    isActiveGroup ? "bg-white/20 text-white" : "text-white/80 hover:bg-white/10"
+                    isActiveGroup || isOpen ? "bg-white/20 text-white" : "text-white/80 hover:bg-white/10"
                   )}
                 >
                   {g.logo ? (
@@ -342,35 +358,41 @@ const AdminDashboard = () => {
                     <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", isOpen && "rotate-180")} />
                   )}
                 </button>
-                {isOpen && g.modules.length > 1 && (
-                  <div className="absolute top-full left-0 mt-1 min-w-[260px] bg-popover text-popover-foreground border rounded-lg shadow-xl overflow-hidden z-50">
-                    {g.modules.map((m) => {
-                      const Icon = m.icon;
-                      const isSel = m.id === activeId;
-                      return (
-                        <button
-                          key={m.id}
-                          onClick={() => selectModule(m.id)}
-                          className={cn(
-                            "w-full flex items-start gap-3 px-3 py-2.5 text-left text-sm hover:bg-muted transition-colors",
-                            isSel && "bg-primary/10 text-primary"
-                          )}
-                        >
-                          <Icon className="h-4 w-4 mt-0.5 shrink-0" />
-                          <div className="min-w-0">
-                            <p className="font-medium truncate">{m.title}</p>
-                            <p className="text-xs text-muted-foreground truncate">{m.description}</p>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
               </div>
-
             );
           })}
         </nav>
+
+        {/* Panneau du sous-menu : position fixe pour ne jamais être coupé */}
+        {openGroupModules.length > 1 && anchor && (
+          <div
+            className="fixed z-[200] min-w-[280px] max-w-[340px] max-h-[70vh] overflow-y-auto bg-popover text-popover-foreground border rounded-xl shadow-2xl py-1"
+            style={{ left: Math.min(anchor.left, window.innerWidth - 350), top: anchor.top + 4 }}
+            onMouseEnter={() => setOpenGroup(openGroup)}
+            onMouseLeave={() => setOpenGroup(null)}
+          >
+            {openGroupModules.map((m) => {
+              const Icon = m.icon;
+              const isSel = m.id === activeId;
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => selectModule(m.id)}
+                  className={cn(
+                    "w-full flex items-start gap-3 px-3 py-2.5 text-left text-sm hover:bg-muted transition-colors",
+                    isSel && "bg-primary/10 text-primary"
+                  )}
+                >
+                  <Icon className="h-4 w-4 mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="font-medium">{m.title}</p>
+                    <p className="text-xs text-muted-foreground">{m.description}</p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </header>
 
       {/* Mobile search */}
