@@ -136,16 +136,19 @@ const GROUPS: GroupDef[] = [
       { id: "investor-prospects", title: "Prospects investisseurs", description: "Contacts et manifestations d'intérêt.", icon: Briefcase, render: () => <AdminInvestorProspects /> },
       {
         id: "opportunities",
-        title: "Opportunités & Scraper",
-        description: "Publier des opportunités et scanner le web.",
+        title: "Opportunités (éditeur)",
+        description: "Créer, modifier et publier les appels à projets.",
         icon: Sparkles,
-        render: () => (
-          <div className="space-y-6">
-            <AdminOpportunitiesManager />
-            <div className="pt-4 border-t"><AdminFirecrawlScraper /></div>
-          </div>
-        ),
+        render: () => <AdminOpportunitiesManager />,
       },
+      {
+        id: "scraper",
+        title: "Scraper web (Firecrawl)",
+        description: "Scanner le web pour détecter des opportunités.",
+        icon: Search,
+        render: () => <AdminFirecrawlScraper />,
+      },
+
       { id: "tenders", title: "Appels d'offres", description: "Import massif et gestion des AO.", icon: ClipboardCheck, render: () => <AdminTendersManager /> },
       { id: "tender-leads", title: "Leads AO", description: "Prospects intéressés par les AO.", icon: UserPlus, render: () => <AdminTenderLeadsManager /> },
     ],
