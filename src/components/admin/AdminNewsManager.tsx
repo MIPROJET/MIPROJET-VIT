@@ -15,6 +15,8 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { UniversalAIEditor, type EditorField } from "./UniversalAIEditor";
 import { purgeOgCache, openOgDebug } from "@/lib/ogPurge";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { AdminBulkBar, RowCheckbox, useBulkSelection, bulkIcons, AdminRoleBadge } from "./ui/AdminBulkBar";
 
 interface NewsItem {
   id: string;
@@ -54,6 +56,7 @@ const editorFields: EditorField[] = [
 
 export const AdminNewsManager = () => {
   const { user } = useAuth();
+  const perms = useAdminPermissions();
   const { toast } = useToast();
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -171,6 +174,26 @@ export const AdminNewsManager = () => {
   };
 
   const filteredNews = news.filter(item => item.title.toLowerCase().includes(searchTerm.toLowerCase()));
+  const sel = useBulkSelection(filteredNews);
+
+  const bulkStatus = async (ids: string[], status: "published" | "draft" | "archived") => {
+    const updates: any = { status };
+    if (status === "published") updates.published_at = new Date().toISOString();
+    if (status === "archived") updates.archived_at = new Date().toISOString();
+    const { error } = await supabase.from("news").update(updates).in("id", ids);
+    if (error) toast({ title: "Échec de l'action groupée", description: error.message, variant: "destructive" });
+    else toast({ title: "Action effectuée", description: `${ids.length} actualité(s) mise(s) à jour.` });
+    sel.clear();
+    fetchNews();
+  };
+
+  const bulkDelete = async (ids: string[]) => {
+    const { error } = await supabase.from("news").delete().in("id", ids);
+    if (error) toast({ title: "Échec de la suppression", description: error.message, variant: "destructive" });
+    else toast({ title: "Supprimées", description: `${ids.length} actualité(s) supprimée(s).` });
+    sel.clear();
+    fetchNews();
+  };
 
   return (
     <div className="space-y-6">
@@ -180,11 +203,12 @@ export const AdminNewsManager = () => {
             <Newspaper className="h-8 w-8" />Gestion des Actualités
           </h1>
           <p className="text-muted-foreground">Créez et gérez les actualités avec l'éditeur IA avancé</p>
+          <div className="mt-2"><AdminRoleBadge /></div>
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => { resetForm(); setIsDialogOpen(true); }}>
+            <Button disabled={!perms.canWrite} onClick={() => { resetForm(); setIsDialogOpen(true); }}>
               <Plus className="h-4 w-4 mr-2" />Nouvelle actualité
             </Button>
           </DialogTrigger>
