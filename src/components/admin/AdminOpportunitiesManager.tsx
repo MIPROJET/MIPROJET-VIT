@@ -18,6 +18,8 @@ import { format } from "date-fns";
 import { UniversalAIEditor, type EditorField } from "./UniversalAIEditor";
 import { WYSIWYGEditor } from "./WYSIWYGEditor";
 import { purgeOgCache, openOgDebug } from "@/lib/ogPurge";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { AdminBulkBar, RowCheckbox, useBulkSelection, bulkIcons, AdminRoleBadge } from "./ui/AdminBulkBar";
 
 interface Opportunity {
   id: string;
@@ -87,6 +89,7 @@ const editorFields: EditorField[] = [
 ];
 
 export const AdminOpportunitiesManager = () => {
+  const perms = useAdminPermissions();
   const { user } = useAuth();
   const { toast } = useToast();
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
@@ -306,6 +309,24 @@ export const AdminOpportunitiesManager = () => {
   };
 
   const filteredOpportunities = opportunities.filter(i => i.title.toLowerCase().includes(searchTerm.toLowerCase()));
+  const sel = useBulkSelection(filteredOpportunities as any);
+
+  const bulkStatus = async (ids: string[], status: "published" | "draft" | "archived") => {
+    const updates: any = { status };
+    if (status === "published") updates.published_at = new Date().toISOString();
+    const { error } = await supabase.from("opportunities").update(updates).in("id", ids);
+    if (error) toast({ title: "Échec de l'action groupée", description: error.message, variant: "destructive" });
+    else toast({ title: "Action effectuée", description: `${ids.length} opportunité(s) mise(s) à jour.` });
+    sel.clear();
+    fetchOpportunities();
+  };
+  const bulkDelete = async (ids: string[]) => {
+    const { error } = await supabase.from("opportunities").delete().in("id", ids);
+    if (error) toast({ title: "Échec de la suppression", description: error.message, variant: "destructive" });
+    else toast({ title: "Supprimées", description: `${ids.length} opportunité(s) supprimée(s).` });
+    sel.clear();
+    fetchOpportunities();
+  };
 
   return (
     <div className="space-y-6">
@@ -598,6 +619,20 @@ export const AdminOpportunitiesManager = () => {
       {/* Table */}
       <Card>
         <CardContent className="p-0">
+          <div className="p-3">
+            <AdminBulkBar
+              count={sel.count}
+              ids={sel.selectedIds}
+              onClear={sel.clear}
+              entityLabel="opportunité"
+              actions={[
+                { key: "publish", label: "Publier", icon: bulkIcons.publish, capability: "publish", confirm: "Publier {n} opportunité(s) ?", run: (ids) => bulkStatus(ids, "published") },
+                { key: "unpublish", label: "Dépublier", icon: bulkIcons.unpublish, capability: "publish", confirm: "Repasser {n} opportunité(s) en brouillon ?", run: (ids) => bulkStatus(ids, "draft") },
+                { key: "archive", label: "Archiver", icon: bulkIcons.unpublish, capability: "publish", confirm: "Archiver {n} opportunité(s) ?", run: (ids) => bulkStatus(ids, "archived") },
+                { key: "delete", label: "Supprimer", icon: bulkIcons.delete, capability: "delete", destructive: true, confirm: "Supprimer définitivement {n} opportunité(s) ?", run: (ids) => bulkDelete(ids) },
+              ]}
+            />
+          </div>
           {loading ? (
             <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>
           ) : (
@@ -605,6 +640,7 @@ export const AdminOpportunitiesManager = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-10"><RowCheckbox checked={sel.allSelected} onChange={sel.toggleAll} /></TableHead>
                     <TableHead>Titre</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Statut</TableHead>
@@ -615,9 +651,10 @@ export const AdminOpportunitiesManager = () => {
                 </TableHeader>
                 <TableBody>
                   {filteredOpportunities.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Aucune opportunité</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Aucune opportunité</TableCell></TableRow>
                   ) : filteredOpportunities.map((item) => (
-                    <TableRow key={item.id}>
+                    <TableRow key={item.id} data-state={sel.isSelected(item.id) ? "selected" : undefined}>
+                      <TableCell><RowCheckbox checked={sel.isSelected(item.id)} onChange={() => sel.toggle(item.id)} /></TableCell>
                       <TableCell>
                         <div>
                           <p className="font-medium line-clamp-1">{item.title}</p>
@@ -635,10 +672,10 @@ export const AdminOpportunitiesManager = () => {
                       <TableCell className="text-center">{item.views_count}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          {item.status === 'draft' && (
+                          {item.status === 'draft' && perms.canPublish && (
                             <Button size="sm" variant="outline" onClick={() => updateStatus(item.id, 'published')} title="Publier"><Check className="h-4 w-4" /></Button>
                           )}
-                          {item.status === 'published' && (
+                          {item.status === 'published' && perms.canPublish && (
                             <Button size="sm" variant="outline" onClick={() => updateStatus(item.id, 'archived')} title="Archiver"><X className="h-4 w-4" /></Button>
                           )}
                           {item.status === 'published' && (
@@ -651,8 +688,8 @@ export const AdminOpportunitiesManager = () => {
                               </Button>
                             </>
                           )}
-                          <Button size="sm" variant="outline" onClick={() => openEditDialog(item)} title="Modifier"><Edit className="h-4 w-4" /></Button>
-                          <Button size="sm" variant="destructive" onClick={() => deleteOpportunity(item.id)} title="Supprimer"><Trash2 className="h-4 w-4" /></Button>
+                          {perms.canWrite && <Button size="sm" variant="outline" onClick={() => openEditDialog(item)} title="Modifier"><Edit className="h-4 w-4" /></Button>}
+                          {perms.canDelete && <Button size="sm" variant="destructive" onClick={() => deleteOpportunity(item.id)} title="Supprimer"><Trash2 className="h-4 w-4" /></Button>}
                         </div>
                       </TableCell>
                     </TableRow>
