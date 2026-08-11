@@ -336,11 +336,12 @@ export const AdminOpportunitiesManager = () => {
             <Briefcase className="h-7 w-7" />Publication Appel à Projets – Club MIPROJET
           </h1>
           <p className="text-muted-foreground text-sm">Formulaire complet de publication d'opportunités</p>
+          <div className="mt-2"><AdminRoleBadge /></div>
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => { resetForm(); setIsDialogOpen(true); }}>
+            <Button disabled={!perms.canWrite} onClick={() => { resetForm(); setIsDialogOpen(true); }}>
               <Plus className="h-4 w-4 mr-2" />Nouvel appel à projets
             </Button>
           </DialogTrigger>
