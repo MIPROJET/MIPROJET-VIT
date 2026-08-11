@@ -160,7 +160,39 @@ const pick = (row: string[], headers: string[], names: string[], fallback: numbe
   return row[idx ?? fallback] || "";
 };
 
+const FIELD_DEFS = [
+  { key: "notice_title", label: "Titre de l'avis", names: ["notice_title", "title", "titre", "objet"], fallback: 0, required: true },
+  { key: "notice_deadline", label: "Date limite", names: ["notice_deadline", "deadline", "date limite", "date_limite"], fallback: 1, required: true },
+  { key: "country_code", label: "Pays", names: ["country_code", "org_country", "country", "pays"], fallback: 2, required: true },
+] as const;
+
+const detectMapping = (header: string[]) =>
+  FIELD_DEFS.map((f) => {
+    const idx = f.names.map((n) => header.indexOf(n)).find((i) => i >= 0);
+    const resolved = idx ?? f.fallback;
+    return {
+      key: f.key,
+      label: f.label,
+      required: f.required,
+      column: header[resolved] ?? `colonne ${resolved + 1}`,
+      index: resolved,
+      matched: idx !== undefined,
+    };
+  });
+
+const downloadCSV = (filename: string, rows: (string | number)[][]) => {
+  const csv = rows.map((r) => r.map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+};
+
+type FailedRow = { line: number; reason: string; title: string; deadline: string; country: string };
+
 export const AdminTendersManager = () => {
+  const perms = useAdminPermissions();
   const [tab, setTab] = useState("import");
   const [active, setActive] = useState<Tender[]>([]);
   const [archived, setArchived] = useState<Tender[]>([]);
