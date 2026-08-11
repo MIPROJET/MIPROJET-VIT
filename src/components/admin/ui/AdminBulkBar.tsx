@@ -85,9 +85,10 @@ export type BulkAction = {
 };
 
 export const AdminBulkBar = ({
-  count, onClear, actions, entityLabel = "élément",
+  count, ids, onClear, actions, entityLabel = "élément",
 }: {
   count: number;
+  ids: string[];
   onClear: () => void;
   actions: BulkAction[];
   entityLabel?: string;
@@ -116,7 +117,7 @@ export const AdminBulkBar = ({
                 size="sm"
                 variant={a.destructive ? "destructive" : "outline"}
                 disabled={busy !== null}
-                onClick={() => (a.confirm ? setPending(a) : execute(a, []))}
+                onClick={() => (a.confirm ? setPending(a) : execute(a, ids))}
               >
                 {busy === a.key ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : a.icon}
                 {a.label}
@@ -137,7 +138,7 @@ export const AdminBulkBar = ({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={() => pending && execute(pending, [])}>Confirmer</AlertDialogAction>
+            <AlertDialogAction onClick={() => pending && execute(pending, ids)}>Confirmer</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
