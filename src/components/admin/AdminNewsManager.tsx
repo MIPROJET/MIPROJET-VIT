@@ -15,6 +15,8 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { UniversalAIEditor, type EditorField } from "./UniversalAIEditor";
 import { purgeOgCache, openOgDebug } from "@/lib/ogPurge";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { AdminBulkBar, RowCheckbox, useBulkSelection, bulkIcons, AdminRoleBadge } from "./ui/AdminBulkBar";
 
 interface NewsItem {
   id: string;
@@ -54,6 +56,7 @@ const editorFields: EditorField[] = [
 
 export const AdminNewsManager = () => {
   const { user } = useAuth();
+  const perms = useAdminPermissions();
   const { toast } = useToast();
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -171,6 +174,26 @@ export const AdminNewsManager = () => {
   };
 
   const filteredNews = news.filter(item => item.title.toLowerCase().includes(searchTerm.toLowerCase()));
+  const sel = useBulkSelection(filteredNews);
+
+  const bulkStatus = async (ids: string[], status: "published" | "draft" | "archived") => {
+    const updates: any = { status };
+    if (status === "published") updates.published_at = new Date().toISOString();
+    if (status === "archived") updates.archived_at = new Date().toISOString();
+    const { error } = await supabase.from("news").update(updates).in("id", ids);
+    if (error) toast({ title: "Échec de l'action groupée", description: error.message, variant: "destructive" });
+    else toast({ title: "Action effectuée", description: `${ids.length} actualité(s) mise(s) à jour.` });
+    sel.clear();
+    fetchNews();
+  };
+
+  const bulkDelete = async (ids: string[]) => {
+    const { error } = await supabase.from("news").delete().in("id", ids);
+    if (error) toast({ title: "Échec de la suppression", description: error.message, variant: "destructive" });
+    else toast({ title: "Supprimées", description: `${ids.length} actualité(s) supprimée(s).` });
+    sel.clear();
+    fetchNews();
+  };
 
   return (
     <div className="space-y-6">
@@ -180,11 +203,12 @@ export const AdminNewsManager = () => {
             <Newspaper className="h-8 w-8" />Gestion des Actualités
           </h1>
           <p className="text-muted-foreground">Créez et gérez les actualités avec l'éditeur IA avancé</p>
+          <div className="mt-2"><AdminRoleBadge /></div>
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => { resetForm(); setIsDialogOpen(true); }}>
+            <Button disabled={!perms.canWrite} onClick={() => { resetForm(); setIsDialogOpen(true); }}>
               <Plus className="h-4 w-4 mr-2" />Nouvelle actualité
             </Button>
           </DialogTrigger>
@@ -238,6 +262,19 @@ export const AdminNewsManager = () => {
         </CardContent>
       </Card>
 
+      <AdminBulkBar
+        count={sel.count}
+        ids={sel.selectedIds}
+        onClear={sel.clear}
+        entityLabel="actualité"
+        actions={[
+          { key: "publish", label: "Publier", icon: bulkIcons.publish, capability: "publish", confirm: "Publier {n} actualité(s) ?", run: (ids) => bulkStatus(ids, "published") },
+          { key: "unpublish", label: "Dépublier", icon: bulkIcons.unpublish, capability: "publish", confirm: "Repasser {n} actualité(s) en brouillon ?", run: (ids) => bulkStatus(ids, "draft") },
+          { key: "archive", label: "Archiver", icon: <Archive className="h-3.5 w-3.5 mr-1.5" />, capability: "publish", confirm: "Archiver {n} actualité(s) ?", run: (ids) => bulkStatus(ids, "archived") },
+          { key: "delete", label: "Supprimer", icon: bulkIcons.delete, capability: "delete", destructive: true, confirm: "Supprimer définitivement {n} actualité(s) ?", run: (ids) => bulkDelete(ids) },
+        ]}
+      />
+
       {/* Table */}
       <Card>
         <CardContent className="p-0">
@@ -251,6 +288,7 @@ export const AdminNewsManager = () => {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10"><RowCheckbox checked={sel.allSelected} onChange={sel.toggleAll} /></TableHead>
                   <TableHead>Titre</TableHead>
                   <TableHead>Catégorie</TableHead>
                   <TableHead>Statut</TableHead>
@@ -261,7 +299,8 @@ export const AdminNewsManager = () => {
               </TableHeader>
               <TableBody>
                 {filteredNews.map((item) => (
-                  <TableRow key={item.id}>
+                  <TableRow key={item.id} data-state={sel.isSelected(item.id) ? "selected" : undefined}>
+                    <TableCell><RowCheckbox checked={sel.isSelected(item.id)} onChange={() => sel.toggle(item.id)} /></TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         {item.image_url && <img src={item.image_url} alt="" className="h-10 w-10 rounded object-cover" />}
@@ -277,12 +316,12 @@ export const AdminNewsManager = () => {
                     <TableCell>{format(new Date(item.created_at), 'dd MMM yyyy', { locale: fr })}</TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-1">
-                        {item.status === 'draft' && (
+                        {item.status === 'draft' && perms.canPublish && (
                           <Button variant="ghost" size="icon" onClick={() => updateStatus(item.id, 'published')} title="Publier">
                             <Check className="h-4 w-4 text-success" />
                           </Button>
                         )}
-                        {item.status === 'published' && (
+                        {item.status === 'published' && perms.canPublish && (
                           <Button variant="ghost" size="icon" onClick={() => updateStatus(item.id, 'archived')} title="Archiver">
                             <Archive className="h-4 w-4" />
                           </Button>
@@ -297,8 +336,8 @@ export const AdminNewsManager = () => {
                             </Button>
                           </>
                         )}
-                        <Button variant="ghost" size="icon" onClick={() => openEditDialog(item)}><Edit className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => deleteNews(item.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                        {perms.canWrite && <Button variant="ghost" size="icon" onClick={() => openEditDialog(item)}><Edit className="h-4 w-4" /></Button>}
+                        {perms.canDelete && <Button variant="ghost" size="icon" onClick={() => deleteNews(item.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
                       </div>
                     </TableCell>
                   </TableRow>

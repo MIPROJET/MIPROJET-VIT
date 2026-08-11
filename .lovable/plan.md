@@ -80,3 +80,66 @@ Ces routes ne sont référencées nulle part dans le menu public, le footer, ou 
 Si tu souhaites ensuite que je supprime aussi complètement les routes obsolètes
 (`/submit-project`, `/dashboard` public), ou que je nettoie les pages métier
 non listées dans le cahier des charges, dis-le moi.
+
+---
+
+## 🛡️ SQL à exécuter manuellement — Lot « Permissions & durcissement »
+
+Copier/coller dans le SQL Editor Supabase. Dès l'exécution, l'UI (matrice de permissions,
+actions groupées, modules admin) fonctionne automatiquement — aucun changement de code requis.
+
+```sql
+-- 1) Rôles admin granulaires (stockés dans public.user_roles, jamais dans profiles)
+--    Valeurs utilisées par l'UI : 'admin', 'admin_operational', 'admin_readonly'
+--    (aucune migration de schéma nécessaire : la colonne role est de type text)
+
+-- 2) Révoquer l'exécution publique des fonctions internes SECURITY DEFINER
+REVOKE EXECUTE ON FUNCTION public.emit_sync_signal(text,text,uuid,uuid,jsonb,text) FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.enqueue_user_email(uuid,text,text,text,text,text,uuid,jsonb) FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.mark_email_sent(uuid,text) FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.mark_email_failed(uuid,text) FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.pick_email_provider() FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.increment_email_provider_usage(text) FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.is_email_unsubscribed(text) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.get_agricapital_partition() FROM anon;
+
+-- 3) Écriture réservée aux rôles admin : actualités
+DROP POLICY IF EXISTS news_admin_write ON public.news;
+CREATE POLICY news_admin_write ON public.news FOR ALL TO authenticated
+USING (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'admin_operational'))
+WITH CHECK (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'admin_operational'));
+
+DROP POLICY IF EXISTS news_admin_delete ON public.news;
+CREATE POLICY news_admin_delete ON public.news FOR DELETE TO authenticated
+USING (public.has_role(auth.uid(),'admin'));
+
+-- 4) Écriture réservée aux rôles admin : opportunités
+DROP POLICY IF EXISTS opportunities_admin_write ON public.opportunities;
+CREATE POLICY opportunities_admin_write ON public.opportunities FOR ALL TO authenticated
+USING (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'admin_operational'))
+WITH CHECK (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'admin_operational'));
+
+DROP POLICY IF EXISTS opportunities_admin_delete ON public.opportunities;
+CREATE POLICY opportunities_admin_delete ON public.opportunities FOR DELETE TO authenticated
+USING (public.has_role(auth.uid(),'admin'));
+
+-- 5) Appels d'offres : import/upsert de masse + suppression admin
+DROP POLICY IF EXISTS tenders_admin_write ON public.tenders;
+CREATE POLICY tenders_admin_write ON public.tenders FOR ALL TO authenticated
+USING (public.is_any_admin(auth.uid()) AND NOT public.has_role(auth.uid(),'admin_readonly'))
+WITH CHECK (public.is_any_admin(auth.uid()) AND NOT public.has_role(auth.uid(),'admin_readonly'));
+
+-- Contrainte unique nécessaire à l'import massif (upsert par lots de 500)
+CREATE UNIQUE INDEX IF NOT EXISTS tenders_title_deadline_uniq
+  ON public.tenders (notice_title, notice_deadline);
+
+-- 6) Lecture de la matrice de permissions par l'équipe admin
+GRANT SELECT ON public.user_roles TO authenticated;
+GRANT ALL ON public.user_roles TO service_role;
+```
+
+### Après exécution
+- Le module **Système → Permissions** affiche la matrice et le rôle courant.
+- Les boutons créer / modifier / supprimer / publier se désactivent selon le rôle.
+- Les **actions groupées** (Actualités, Opportunités, Appels d'offres) sont opérationnelles.
+- L'import d'appels d'offres 100 000+ lignes utilise l'index unique ci-dessus.

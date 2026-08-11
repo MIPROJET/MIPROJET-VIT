@@ -40,6 +40,7 @@ import { AdminDatabaseManager } from "@/components/admin/AdminDatabaseManager";
 import { AdminEvaluationsManager } from "@/components/admin/AdminEvaluationsManager";
 import { SmartInvoiceGenerator } from "@/components/admin/SmartInvoiceGenerator";
 import { AdminReferralsManager } from "@/components/admin/AdminReferralsManager";
+import { AdminPermissionsMatrix } from "@/components/admin/AdminPermissionsMatrix";
 import { AdminSettingsManager } from "@/components/admin/AdminSettingsManager";
 import { AdminOpportunitiesManager } from "@/components/admin/AdminOpportunitiesManager";
 import { AdminSubscriptionsManager } from "@/components/admin/AdminSubscriptionsManager";
@@ -197,6 +198,7 @@ const GROUPS: GroupDef[] = [
     label: "Système",
     icon: Settings,
     modules: [
+      { id: "permissions", title: "Permissions", description: "Matrice des droits par rôle admin.", icon: ShieldCheck, render: () => <AdminPermissionsMatrix /> },
       { id: "settings", title: "Paramètres", description: "Configuration générale.", icon: Settings, render: () => <AdminSettingsManager /> },
       { id: "database", title: "Base de données", description: "Backups, exports, entretien.", icon: Database, render: () => <AdminDatabaseManager /> },
       { id: "maintenance", title: "Maintenance", description: "Tâches et journaux.", icon: Wrench, render: () => <AdminMaintenanceManager /> },
