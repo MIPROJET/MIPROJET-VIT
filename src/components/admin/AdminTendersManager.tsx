@@ -13,6 +13,8 @@ import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { countryNameFromCode, normalizeCountryCode } from "@/lib/countries";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { AdminBulkBar, RowCheckbox, useBulkSelection, bulkIcons, AdminRoleBadge } from "@/components/admin/ui/AdminBulkBar";
 import { CountryFlag } from "@/components/tenders/CountryFlag";
 
 type Tender = any;
@@ -204,6 +206,18 @@ export const AdminTendersManager = () => {
   const [preview, setPreview] = useState<{ total: number; eligible: number; outside: number; invalid: number; duplicates: number; countries: Record<string, number> } | null>(null);
   const [mode, setMode] = useState<"skip" | "replace" | "wipe">("replace");
   const fileRef = useRef<HTMLInputElement>(null);
+  // Prévisualisation avant import
+  const parsedRef = useRef<{ header: string[]; rows: string[][] } | null>(null);
+  const [staged, setStaged] = useState<{
+    fileName: string;
+    header: string[];
+    mapping: ReturnType<typeof detectMapping>;
+    sample: string[][];
+    rowCount: number;
+  } | null>(null);
+  // Journal d'import
+  const [failedRows, setFailedRows] = useState<FailedRow[]>([]);
+  const [log, setLog] = useState<{ created: number; updated: number; skipped: number; errors: number; fileName: string; at: string } | null>(null);
 
   const reload = async () => {
     const [a, ar, b] = await Promise.all([
@@ -238,14 +252,48 @@ export const AdminTendersManager = () => {
     return { total: rows.length, eligible, outside, invalid, duplicates, countries };
   };
 
+  /** Étape 1 — analyse locale du fichier : 10 premières lignes + mapping des colonnes. */
   const handleFile = async (file: File) => {
     if (!file) return;
-    setImporting(true);
-    setProgress(0);
     setReport(null);
+    setLog(null);
+    setFailedRows([]);
+    setStaged(null);
+    setPreview(null);
     try {
       const { header, rows } = await parseAnyFile(file);
       if (!header || !header.length) throw new Error("Fichier vide ou format non reconnu");
+      parsedRef.current = { header, rows };
+      setPreview(analyzeRows(rows, header));
+      setStaged({
+        fileName: file.name,
+        header,
+        mapping: detectMapping(header),
+        sample: rows.slice(0, 10),
+        rowCount: rows.length,
+      });
+      setTab("import");
+      toast({ title: "Fichier analysé", description: `${rows.length} ligne(s) détectée(s). Validez le mapping puis lancez l'import.` });
+    } catch (e: any) {
+      toast({ title: "Erreur de lecture", description: e.message, variant: "destructive" });
+    } finally {
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  /** Étape 2 — import réel, après validation de la prévisualisation. */
+  const runImport = async () => {
+    if (!parsedRef.current || !staged) return;
+    if (!perms.canWrite) { toast({ title: "Droits insuffisants", variant: "destructive" }); return; }
+    if (mode === "wipe" && !confirm("Vider TOUS les appels d'offres existants avant import ?")) return;
+    setImporting(true);
+    setProgress(0);
+    setReport(null);
+    setFailedRows([]);
+    const fails: FailedRow[] = [];
+    try {
+      const { header, rows } = parsedRef.current;
+      const file = { name: staged.fileName };
       const preflight = analyzeRows(rows, header);
       setPreview(preflight);
 
@@ -262,7 +310,7 @@ export const AdminTendersManager = () => {
       // Import haute capacité (100 000+ lignes) : pas d'index préalable en mémoire,
       // on s'appuie sur la contrainte UNIQUE(notice_title, notice_deadline) via upsert.
       const fileSeen = new Set<string>();
-      let processed = 0, skipped = 0, failed = 0;
+      let processed = 0, skipped = 0, failed = 0, updated = 0;
       const CHUNK = 500;
       const ignoreDuplicates = mode === "skip";
 
@@ -285,6 +333,14 @@ export const AdminTendersManager = () => {
 
       const flush = async (batchRows: any[]) => {
         if (!batchRows.length) return;
+        // Compte créations vs mises à jour pour le journal
+        try {
+          const titles = batchRows.map((r) => r.notice_title);
+          const { data: existing } = await (supabase as any)
+            .from("tenders").select("notice_title,notice_deadline").in("notice_title", titles);
+          const set = new Set((existing || []).map((e: any) => `${norm(e.notice_title)}|${e.notice_deadline}`));
+          updated += batchRows.filter((r) => set.has(`${norm(r.notice_title)}|${r.notice_deadline}`)).length;
+        } catch { /* comptage best-effort */ }
         const { error } = await (supabase as any)
           .from("tenders")
           .upsert(batchRows, { onConflict: "notice_title,notice_deadline", ignoreDuplicates });
@@ -295,8 +351,10 @@ export const AdminTendersManager = () => {
           const { error: e1 } = await (supabase as any)
             .from("tenders")
             .upsert(row, { onConflict: "notice_title,notice_deadline", ignoreDuplicates });
-          if (e1) failed++;
-          else processed++;
+          if (e1) {
+            failed++;
+            fails.push({ line: row.__line ?? 0, reason: e1.message || "erreur base de données", title: row.notice_title, deadline: row.notice_deadline, country: row.country_code });
+          } else processed++;
         }
       };
 
@@ -308,11 +366,18 @@ export const AdminTendersManager = () => {
         const country = pick(r, header, ["country_code", "org_country", "country", "pays"], 2);
         const dl = parseDeadline((deadline || "").trim());
         const iso = dl ? normalizeCountryCode(country) : "";
-        if (!title || !dl || !iso || !WEST_AFRICA.has(iso)) { skipped++; }
+        const push = (reason: string) => {
+          skipped++;
+          if (fails.length < 5000) fails.push({ line: i + 2, reason, title, deadline, country });
+        };
+        if (!title) push("titre manquant");
+        else if (!dl) push("date limite invalide ou manquante");
+        else if (!iso) push("pays non reconnu");
+        else if (!WEST_AFRICA.has(iso)) push("hors Afrique de l'Ouest");
         else {
           const key = tenderKey(title, dl, iso);
-          if (fileSeen.has(key)) skipped++;
-          else { fileSeen.add(key); pending.push(buildRow(title, dl, iso)); }
+          if (fileSeen.has(key)) push("doublon dans le fichier");
+          else { fileSeen.add(key); pending.push({ ...buildRow(title, dl, iso), __line: i + 2 } as any); }
         }
 
         if (pending.length >= CHUNK) {
@@ -331,12 +396,16 @@ export const AdminTendersManager = () => {
         duplicate_rows: skipped + failed,
       }).eq("id", batch?.id);
 
-      const inserted = processed;
-      const updated = 0;
-      setReport({ inserted, updated, skipped: skipped + failed, total: rows.length, unique: fileSeen.size, eligible: preflight.eligible, outside: preflight.outside, invalid: preflight.invalid, duplicates: preflight.duplicates });
+      const created = Math.max(0, processed - updated);
+      setReport({ inserted: created, updated, skipped: skipped + failed, total: rows.length, unique: fileSeen.size, eligible: preflight.eligible, outside: preflight.outside, invalid: preflight.invalid, duplicates: preflight.duplicates });
+      setFailedRows(fails);
+      setLog({ created, updated, skipped, errors: failed, fileName: staged.fileName, at: new Date().toISOString() });
+      setStaged(null);
+      parsedRef.current = null;
+      setTab("log");
       toast({
         title: "Import terminé",
-        description: `${processed} enregistré(s) · ${skipped} ignoré(s)${failed ? ` · ${failed} en erreur` : ""}.`,
+        description: `${created} créé(s) · ${updated} modifié(s) · ${skipped} ignoré(s)${failed ? ` · ${failed} en erreur` : ""}.`,
       });
 
 
@@ -345,10 +414,14 @@ export const AdminTendersManager = () => {
       toast({ title: "Erreur d'import", description: e.message, variant: "destructive" });
     } finally {
       setImporting(false);
-      if (fileRef.current) fileRef.current.value = "";
     }
   };
 
+  const downloadFailures = () =>
+    downloadCSV(
+      `import-echecs-${format(new Date(), "yyyy-MM-dd-HHmm")}.csv`,
+      [["Ligne", "Motif", "Titre", "Date limite", "Pays"], ...failedRows.map((f) => [f.line, f.reason, f.title, f.deadline, f.country])],
+    );
 
   const archiveOne = async (id: string) => {
     await (supabase as any).from("tenders").update({ status: "archived", updated_at: new Date().toISOString() }).eq("id", id);
