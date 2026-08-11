@@ -331,32 +331,35 @@ export const AdminTendersManager = () => {
         };
       };
 
-      const flush = async (batchRows: any[]) => {
-        if (!batchRows.length) return;
+      const flush = async (staged: any[]) => {
+        if (!staged.length) return;
+        const clean = staged.map(({ __line, ...rest }: any) => rest);
         // Compte créations vs mises à jour pour le journal
         try {
-          const titles = batchRows.map((r) => r.notice_title);
+          const titles = clean.map((r) => r.notice_title);
           const { data: existing } = await (supabase as any)
             .from("tenders").select("notice_title,notice_deadline").in("notice_title", titles);
           const set = new Set((existing || []).map((e: any) => `${norm(e.notice_title)}|${e.notice_deadline}`));
-          updated += batchRows.filter((r) => set.has(`${norm(r.notice_title)}|${r.notice_deadline}`)).length;
+          updated += clean.filter((r) => set.has(`${norm(r.notice_title)}|${r.notice_deadline}`)).length;
         } catch { /* comptage best-effort */ }
         const { error } = await (supabase as any)
           .from("tenders")
-          .upsert(batchRows, { onConflict: "notice_title,notice_deadline", ignoreDuplicates });
-        if (!error) { processed += batchRows.length; return; }
+          .upsert(clean, { onConflict: "notice_title,notice_deadline", ignoreDuplicates });
+        if (!error) { processed += clean.length; return; }
         console.error("[tenders import upsert chunk]", error);
         // Repli ligne par ligne : une ligne fautive ne bloque pas le lot
-        for (const row of batchRows) {
+        for (const row of staged) {
+          const { __line, ...payload } = row as any;
           const { error: e1 } = await (supabase as any)
             .from("tenders")
-            .upsert(row, { onConflict: "notice_title,notice_deadline", ignoreDuplicates });
+            .upsert(payload, { onConflict: "notice_title,notice_deadline", ignoreDuplicates });
           if (e1) {
             failed++;
-            fails.push({ line: row.__line ?? 0, reason: e1.message || "erreur base de données", title: row.notice_title, deadline: row.notice_deadline, country: row.country_code });
+            fails.push({ line: __line ?? 0, reason: e1.message || "erreur base de données", title: payload.notice_title, deadline: payload.notice_deadline, country: payload.country_code });
           } else processed++;
         }
       };
+
 
       let pending: any[] = [];
       for (let i = 0; i < rows.length; i++) {
