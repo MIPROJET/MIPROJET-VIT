@@ -443,6 +443,27 @@ export const AdminTendersManager = () => {
   const filter = (list: Tender[]) =>
     q ? list.filter((t) => t.notice_title.toLowerCase().includes(q.toLowerCase())) : list;
 
+  const activeRows = filter(active).slice(0, 200);
+  const archivedRows = archived.slice(0, 200);
+  const selActive = useBulkSelection(activeRows);
+  const selArchived = useBulkSelection(archivedRows);
+
+  const bulkUpdateStatus = async (ids: string[], status: "active" | "archived", clear: () => void) => {
+    const { error } = await (supabase as any)
+      .from("tenders").update({ status, updated_at: new Date().toISOString() }).in("id", ids);
+    if (error) toast({ title: "Échec de l'action groupée", description: error.message, variant: "destructive" });
+    else toast({ title: status === "archived" ? "Appels d'offres archivés" : "Appels d'offres restaurés", description: `${ids.length} élément(s) mis à jour.` });
+    clear();
+    reload();
+  };
+  const bulkDelete = async (ids: string[], clear: () => void) => {
+    const { error } = await (supabase as any).from("tenders").delete().in("id", ids);
+    if (error) toast({ title: "Échec de la suppression", description: error.message, variant: "destructive" });
+    else toast({ title: "Suppression effectuée", description: `${ids.length} élément(s) supprimé(s).` });
+    clear();
+    reload();
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -609,15 +630,29 @@ export const AdminTendersManager = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Rechercher…" value={q} onChange={(e) => setQ(e.target.value)} className="pl-10" />
           </div>
+          <AdminBulkBar
+            count={selActive.count}
+            ids={selActive.selectedIds}
+            onClear={selActive.clear}
+            entityLabel="appel d'offre"
+            actions={[
+              { key: "archive", label: "Archiver", icon: bulkIcons.unpublish, capability: "publish", confirm: "Archiver {n} appel(s) d'offres ?", run: (ids) => bulkUpdateStatus(ids, "archived", selActive.clear) },
+              { key: "delete", label: "Supprimer", icon: bulkIcons.delete, capability: "delete", destructive: true, confirm: "Supprimer définitivement {n} appel(s) d'offres ?", run: (ids) => bulkDelete(ids, selActive.clear) },
+            ]}
+          />
           <Card>
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
-                  <TableRow><TableHead>Titre</TableHead><TableHead>Pays</TableHead><TableHead>Secteur</TableHead><TableHead>Deadline</TableHead><TableHead>Vues</TableHead><TableHead>Actions</TableHead></TableRow>
+                  <TableRow>
+                    <TableHead className="w-10"><RowCheckbox checked={selActive.allSelected} onChange={selActive.toggleAll} /></TableHead>
+                    <TableHead>Titre</TableHead><TableHead>Pays</TableHead><TableHead>Secteur</TableHead><TableHead>Deadline</TableHead><TableHead>Vues</TableHead><TableHead>Actions</TableHead>
+                  </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filter(active).slice(0, 200).map((t) => (
-                    <TableRow key={t.id}>
+                  {activeRows.map((t) => (
+                    <TableRow key={t.id} data-state={selActive.isSelected(t.id) ? "selected" : undefined}>
+                      <TableCell><RowCheckbox checked={selActive.isSelected(t.id)} onChange={() => selActive.toggle(t.id)} /></TableCell>
                       <TableCell className="max-w-md truncate">{t.notice_title}</TableCell>
                       <TableCell><span className="inline-flex items-center gap-2"><CountryFlag code={t.country_code || t.country} size={14} />{t.country_name || t.country_code || t.country}</span></TableCell>
                       <TableCell><Badge variant="secondary">{t.sector || "—"}</Badge></TableCell>
@@ -626,8 +661,8 @@ export const AdminTendersManager = () => {
                       <TableCell>
                         <div className="flex gap-1">
                           <Button size="sm" variant="ghost" asChild><a href={`/appels-doffres/${t.slug || t.id}`} target="_blank" rel="noopener"><ExternalLink className="h-3.5 w-3.5" /></a></Button>
-                          <Button size="sm" variant="ghost" onClick={() => archiveOne(t.id)}><Archive className="h-3.5 w-3.5" /></Button>
-                          <Button size="sm" variant="ghost" onClick={() => deleteOne(t.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                          {perms.canPublish && <Button size="sm" variant="ghost" onClick={() => archiveOne(t.id)}><Archive className="h-3.5 w-3.5" /></Button>}
+                          {perms.canDelete && <Button size="sm" variant="ghost" onClick={() => deleteOne(t.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -638,22 +673,36 @@ export const AdminTendersManager = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="archived" className="pt-4">
+        <TabsContent value="archived" className="pt-4 space-y-3">
+          <AdminBulkBar
+            count={selArchived.count}
+            ids={selArchived.selectedIds}
+            onClear={selArchived.clear}
+            entityLabel="archive"
+            actions={[
+              { key: "restore", label: "Restaurer", icon: bulkIcons.publish, capability: "publish", confirm: "Restaurer {n} appel(s) d'offres ?", run: (ids) => bulkUpdateStatus(ids, "active", selArchived.clear) },
+              { key: "delete", label: "Supprimer", icon: bulkIcons.delete, capability: "delete", destructive: true, confirm: "Supprimer définitivement {n} archive(s) ?", run: (ids) => bulkDelete(ids, selArchived.clear) },
+            ]}
+          />
           <Card>
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
-                  <TableRow><TableHead>Titre</TableHead><TableHead>Pays</TableHead><TableHead>Archivé le</TableHead><TableHead>Actions</TableHead></TableRow>
+                  <TableRow>
+                    <TableHead className="w-10"><RowCheckbox checked={selArchived.allSelected} onChange={selArchived.toggleAll} /></TableHead>
+                    <TableHead>Titre</TableHead><TableHead>Pays</TableHead><TableHead>Archivé le</TableHead><TableHead>Actions</TableHead>
+                  </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {archived.slice(0, 200).map((t) => (
-                    <TableRow key={t.id}>
+                  {archivedRows.map((t) => (
+                    <TableRow key={t.id} data-state={selArchived.isSelected(t.id) ? "selected" : undefined}>
+                      <TableCell><RowCheckbox checked={selArchived.isSelected(t.id)} onChange={() => selArchived.toggle(t.id)} /></TableCell>
                       <TableCell className="max-w-md truncate">{t.notice_title}</TableCell>
                       <TableCell><span className="inline-flex items-center gap-2"><CountryFlag code={t.country_code || t.country} size={14} />{t.country_name || t.country_code || t.country}</span></TableCell>
                       <TableCell className="text-xs">{t.updated_at ? format(new Date(t.updated_at), "dd MMM yy", { locale: fr }) : "—"}</TableCell>
                       <TableCell>
-                        <Button size="sm" variant="ghost" onClick={() => restoreOne(t.id)}><RotateCcw className="h-3.5 w-3.5 mr-1" /> Restaurer</Button>
-                        <Button size="sm" variant="ghost" onClick={() => deleteOne(t.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                        {perms.canPublish && <Button size="sm" variant="ghost" onClick={() => restoreOne(t.id)}><RotateCcw className="h-3.5 w-3.5 mr-1" /> Restaurer</Button>}
+                        {perms.canDelete && <Button size="sm" variant="ghost" onClick={() => deleteOne(t.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>}
                       </TableCell>
                     </TableRow>
                   ))}
