@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
-import { Upload, FileSpreadsheet, Archive, RotateCcw, Trash2, ExternalLink, Search } from "lucide-react";
+import { Upload, FileSpreadsheet, Archive, RotateCcw, Trash2, ExternalLink, Search, ClipboardList, Download, Play, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -445,9 +445,12 @@ export const AdminTendersManager = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Appels d'offres</h1>
-        <p className="text-muted-foreground">Import CSV quotidien, gestion des offres actives et archives.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-bold">Appels d'offres</h1>
+          <p className="text-muted-foreground">Import universel, prévisualisation du mapping, journal d'import et gestion des offres.</p>
+        </div>
+        <AdminRoleBadge />
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
@@ -455,6 +458,7 @@ export const AdminTendersManager = () => {
           <TabsTrigger value="import"><Upload className="h-4 w-4 mr-1.5" /> Import CSV</TabsTrigger>
           <TabsTrigger value="active">Actives ({active.length})</TabsTrigger>
           <TabsTrigger value="archived"><Archive className="h-4 w-4 mr-1.5" /> Archives ({archived.length})</TabsTrigger>
+          <TabsTrigger value="log"><ClipboardList className="h-4 w-4 mr-1.5" /> Journal d'import</TabsTrigger>
           <TabsTrigger value="history">Historique imports</TabsTrigger>
         </TabsList>
 
@@ -492,10 +496,7 @@ export const AdminTendersManager = () => {
               <div
                 onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
                 onDragOver={(e) => e.preventDefault()}
-                onClick={() => {
-                  if (mode === "wipe" && !confirm("Vider TOUS les appels d'offres existants avant import ?")) return;
-                  fileRef.current?.click();
-                }}
+                onClick={() => fileRef.current?.click()}
                 className="border-2 border-dashed border-border rounded-xl p-10 text-center cursor-pointer hover:border-primary transition"
               >
                 <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
@@ -515,6 +516,67 @@ export const AdminTendersManager = () => {
                   </div>
                 </CardContent>
               </Card>
+              {staged && (
+                <Card className="border-primary/40">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex flex-wrap items-center gap-2">
+                      <FileSpreadsheet className="h-4 w-4" /> Prévisualisation — {staged.fileName}
+                      <Badge variant="secondary">{staged.rowCount} lignes</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <p className="text-sm font-semibold mb-2">Mapping des colonnes détecté</p>
+                      <div className="grid sm:grid-cols-3 gap-2">
+                        {staged.mapping.map((m) => (
+                          <div key={m.key} className="rounded-lg border p-3">
+                            <p className="text-xs text-muted-foreground">{m.label}</p>
+                            <p className="font-semibold text-sm truncate">{m.column}</p>
+                            <Badge variant={m.matched ? "secondary" : "outline"} className="mt-1 text-[10px]">
+                              {m.matched ? "en-tête reconnu" : `position ${m.index + 1} (par défaut)`}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-semibold mb-2">10 premières lignes</p>
+                      <div className="overflow-x-auto rounded-lg border">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-10">#</TableHead>
+                              {staged.header.map((h, i) => (
+                                <TableHead key={i} className="whitespace-nowrap">{h || `col ${i + 1}`}</TableHead>
+                              ))}
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {staged.sample.map((r, ri) => (
+                              <TableRow key={ri}>
+                                <TableCell className="text-xs text-muted-foreground">{ri + 2}</TableCell>
+                                {staged.header.map((_, ci) => (
+                                  <TableCell key={ci} className="text-xs max-w-[240px] truncate">{r[ci] || "—"}</TableCell>
+                                ))}
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button onClick={runImport} disabled={importing || !perms.canWrite}>
+                        <Play className="h-4 w-4 mr-2" /> Lancer l'import ({preview?.eligible ?? 0} éligibles)
+                      </Button>
+                      <Button variant="outline" onClick={() => { setStaged(null); setPreview(null); parsedRef.current = null; }}>
+                        <X className="h-4 w-4 mr-2" /> Annuler
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
               {preview && (
                 <Card className="border-primary/30 bg-primary/5">
                   <CardContent className="p-4">
@@ -599,6 +661,51 @@ export const AdminTendersManager = () => {
               </Table>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="log" className="pt-4 space-y-4">
+          {!log ? (
+            <Card><CardContent className="p-10 text-center text-sm text-muted-foreground">Aucun import réalisé dans cette session.</CardContent></Card>
+          ) : (
+            <>
+              <div className="grid sm:grid-cols-4 gap-3">
+                <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Créés</p><p className="text-2xl font-bold text-success">{log.created}</p></CardContent></Card>
+                <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Modifiés</p><p className="text-2xl font-bold">{log.updated}</p></CardContent></Card>
+                <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Ignorés</p><p className="text-2xl font-bold">{log.skipped}</p></CardContent></Card>
+                <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Erreurs</p><p className="text-2xl font-bold text-destructive">{log.errors}</p></CardContent></Card>
+              </div>
+              <Card>
+                <CardHeader className="flex-row items-center justify-between space-y-0">
+                  <CardTitle className="text-base">
+                    {log.fileName} · {format(new Date(log.at), "dd MMM yyyy HH:mm", { locale: fr })}
+                  </CardTitle>
+                  <Button size="sm" variant="outline" onClick={downloadFailures} disabled={!failedRows.length}>
+                    <Download className="h-4 w-4 mr-2" /> Rapport CSV des échecs ({failedRows.length})
+                  </Button>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow><TableHead>Ligne</TableHead><TableHead>Motif</TableHead><TableHead>Titre</TableHead><TableHead>Date limite</TableHead><TableHead>Pays</TableHead></TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {failedRows.length === 0 ? (
+                        <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Aucune ligne en échec 🎉</TableCell></TableRow>
+                      ) : failedRows.slice(0, 300).map((f, i) => (
+                        <TableRow key={i}>
+                          <TableCell className="text-xs">{f.line}</TableCell>
+                          <TableCell><Badge variant="outline">{f.reason}</Badge></TableCell>
+                          <TableCell className="max-w-sm truncate text-sm">{f.title || "—"}</TableCell>
+                          <TableCell className="text-xs">{f.deadline || "—"}</TableCell>
+                          <TableCell className="text-xs">{f.country || "—"}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </>
+          )}
         </TabsContent>
 
         <TabsContent value="history" className="pt-4">
