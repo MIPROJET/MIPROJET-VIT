@@ -2,10 +2,12 @@ import { ReactNode } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
+import { AdminActions, useAdminShell } from "./AdminPageShell";
 
 /**
  * Coquille standardisée pour tous les modules admin.
- * Garantit une UI cohérente : titre, description, actions, barre d'outils.
+ * À l'intérieur du AdminPageShell, l'en-tête est délégué au shell (pas de doublon)
+ * et les actions sont envoyées dans la barre d'actions unique.
  */
 export const AdminModuleShell = ({
   title,
@@ -21,34 +23,42 @@ export const AdminModuleShell = ({
   actions?: ReactNode;
   toolbar?: ReactNode;
   children: ReactNode;
-}) => (
-  <section className="space-y-5">
-    <header className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
-      <div className="flex items-start gap-3 min-w-0">
-        {Icon && (
-          <span className="rounded-lg bg-primary/10 text-primary p-2 shrink-0">
-            <Icon className="h-5 w-5" />
-          </span>
-        )}
-        <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight truncate">{title}</h1>
-          {description && <p className="text-sm text-muted-foreground">{description}</p>}
-        </div>
-      </div>
-      {actions && <div className="flex flex-wrap items-center gap-2 shrink-0">{actions}</div>}
-    </header>
+}) => {
+  const { inShell } = useAdminShell();
 
-    {toolbar && (
-      <Card>
-        <CardContent className="p-3 sm:p-4">
-          <div className="flex flex-col sm:flex-row gap-3">{toolbar}</div>
-        </CardContent>
-      </Card>
-    )}
+  return (
+    <section className="space-y-5">
+      {inShell ? (
+        actions ? <AdminActions>{actions}</AdminActions> : null
+      ) : (
+        <header className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+          <div className="flex items-start gap-3 min-w-0">
+            {Icon && (
+              <span className="rounded-lg bg-primary/10 text-primary p-2 shrink-0">
+                <Icon className="h-5 w-5" />
+              </span>
+            )}
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight truncate">{title}</h1>
+              {description && <p className="text-sm text-muted-foreground">{description}</p>}
+            </div>
+          </div>
+          {actions && <div className="flex flex-wrap items-center gap-2 shrink-0">{actions}</div>}
+        </header>
+      )}
 
-    <div className="space-y-6">{children}</div>
-  </section>
-);
+      {toolbar && (
+        <Card>
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex flex-col sm:flex-row gap-3">{toolbar}</div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="space-y-6">{children}</div>
+    </section>
+  );
+};
 
 /** Champ de recherche standardisé pour les barres d'outils admin. */
 export const AdminSearchField = ({

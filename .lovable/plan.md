@@ -143,3 +143,62 @@ GRANT ALL ON public.user_roles TO service_role;
 - Les boutons créer / modifier / supprimer / publier se désactivent selon le rôle.
 - Les **actions groupées** (Actualités, Opportunités, Appels d'offres) sont opérationnelles.
 - L'import d'appels d'offres 100 000+ lignes utilise l'index unique ci-dessus.
+
+---
+
+# LOT — Admin unifié, production réelle & synchronisation Go / MiPROJET+ / Invest
+
+## ✅ Livré (UI, déjà branché)
+
+- **Shell admin unique** (`src/components/admin/ui/AdminPageShell.tsx`) : header (icône, titre, description),
+  fil d'Ariane et **barre d'actions unique** partagée par tous les modules.
+  `AdminModuleShell` détecte le shell et n'affiche plus de double en-tête : ses actions sont
+  automatiquement projetées dans la barre d'actions du shell.
+- **MiPROJET Go → Produits & opérations** (`AdminGoManager`) : CRUD réel sur `produits` / `operations`,
+  activation/archivage, suppression, KPI, et **propagation automatique** vers Go (`go.produit.*`, `go.sync.request`).
+- **MiPROJET+ → Gestion des projets** (`AdminMPPlusManager`) : modifier, valider, rejeter, archiver,
+  supprimer, **noter** (`mp_evaluations`), **certifier** (`mp_certifications`), **message au porteur**
+  (`notifications`) et **publier vers Invest** (`projects`), chaque action émettant un signal de sync.
+- **Système → Synchronisation plateformes** (`AdminSyncHub`) : file réelle `platform_sync_signals`
+  (filtres, traiter/ignorer/supprimer, émission manuelle de signaux, push du jeu de données vers Go).
+- **Système → Nettoyage production** (`AdminDataCleanup`) : détection + purge des comptes/données
+  de démo, de simulation et des doublons de brouillons Invest.
+
+## 🗄️ SQL à exécuter (manuellement) — tout se branche automatiquement ensuite
+
+```sql
+-- 1) Autoriser l'admin console à émettre des signaux de synchronisation
+GRANT EXECUTE ON FUNCTION public.emit_sync_signal(text, text, uuid, uuid, jsonb, text) TO authenticated;
+
+-- 2) Accès admin à la file de synchronisation (lecture / traitement / purge)
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.platform_sync_signals TO authenticated;
+GRANT ALL ON public.platform_sync_signals TO service_role;
+
+DROP POLICY IF EXISTS "Admins manage sync signals" ON public.platform_sync_signals;
+CREATE POLICY "Admins manage sync signals"
+  ON public.platform_sync_signals FOR ALL TO authenticated
+  USING (public.is_any_admin(auth.uid()))
+  WITH CHECK (public.is_any_admin(auth.uid()));
+
+-- 3) Notation admin des projets MiPROJET+ (module "Noter")
+DROP POLICY IF EXISTS "Admins manage evaluations" ON public.mp_evaluations;
+CREATE POLICY "Admins manage evaluations"
+  ON public.mp_evaluations FOR ALL TO authenticated
+  USING (public.is_any_admin(auth.uid()))
+  WITH CHECK (public.is_any_admin(auth.uid()));
+
+-- 4) Nettoyage production : doublons de brouillons Invest (on garde le plus récent par titre)
+DELETE FROM public.projects p
+USING (
+  SELECT id, row_number() OVER (PARTITION BY lower(btrim(title)) ORDER BY created_at DESC) rn
+  FROM public.projects WHERE status = 'draft'
+) d
+WHERE p.id = d.id AND d.rn > 1;
+
+-- 5) Suppression des éventuels comptes de démo / test (aucun détecté à ce jour)
+DELETE FROM public.profiles
+WHERE email ILIKE '%demo%' OR email ILIKE '%test%' OR email ILIKE '%example%';
+```
+
+> Dès que ce SQL est exécuté : le hub de synchronisation affiche et traite les signaux,
+> les actions Go/MiPROJET+ propagent automatiquement, et la notation admin fonctionne.

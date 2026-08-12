@@ -57,6 +57,11 @@ import { AdminTenderLeadsManager } from "@/components/admin/AdminTenderLeadsMana
 import { AdminTestimonialsManager } from "@/components/admin/AdminTestimonialsManager";
 import { AdminInvestorProspects } from "@/components/admin/AdminInvestorProspects";
 import { AdminMPInvestSync } from "@/components/admin/AdminMPInvestSync";
+import { AdminSyncHub } from "@/components/admin/AdminSyncHub";
+import { AdminGoManager } from "@/components/admin/AdminGoManager";
+import { AdminMPPlusManager } from "@/components/admin/AdminMPPlusManager";
+import { AdminDataCleanup } from "@/components/admin/AdminDataCleanup";
+import { AdminPageShell } from "@/components/admin/ui/AdminPageShell";
 
 type ModuleDef = {
   id: string;
@@ -100,6 +105,7 @@ const GROUPS: GroupDef[] = [
     label: "MiPROJET Go",
     logo: mpGoLogo,
     modules: [
+      { id: "go-data", title: "Produits & opérations", description: "CRUD complet des données Go + propagation.", icon: Database, render: () => <AdminGoManager /> },
       { id: "users", title: "Utilisateurs", description: "Comptes, rôles et abonnements.", icon: Users, render: () => <AdminUsersTable /> },
       { id: "subscriptions", title: "Abonnements", description: "Plans, souscriptions et cycles.", icon: CreditCard, render: () => <AdminSubscriptionsManager /> },
       { id: "referrals", title: "Parrainages", description: "Programme de parrainage.", icon: Gift, render: () => <AdminReferralsManager /> },
@@ -110,6 +116,7 @@ const GROUPS: GroupDef[] = [
     label: "MiPROJET+",
     logo: mpPlusLogo,
     modules: [
+      { id: "mp-manage", title: "Gestion des projets", description: "Créer, modifier, valider, noter, certifier.", icon: FolderKanban, render: () => <AdminMPPlusManager /> },
       { id: "mp-overview", title: "Projets & scores", description: "Vue complète MiPROJET+.", icon: TrendingUp, render: () => <AdminMPOverview /> },
       { id: "mp-analytics", title: "Analytiques", description: "Analytique d'usage MiPROJET+.", icon: BarChart3, render: () => <AdminMPAnalytics /> },
       { id: "mp-certifications", title: "Certifications", description: "Gérer les certifications émises.", icon: Award, render: () => <AdminMPCertificationsManager /> },
@@ -198,6 +205,8 @@ const GROUPS: GroupDef[] = [
     label: "Système",
     icon: Settings,
     modules: [
+      { id: "sync-hub", title: "Synchronisation plateformes", description: "Signaux Go / MiPROJET+ / Invest.", icon: RefreshCcw, render: () => <AdminSyncHub /> },
+      { id: "cleanup", title: "Nettoyage production", description: "Supprimer les comptes et données de démo.", icon: Wrench, render: () => <AdminDataCleanup /> },
       { id: "permissions", title: "Permissions", description: "Matrice des droits par rôle admin.", icon: ShieldCheck, render: () => <AdminPermissionsMatrix /> },
       { id: "settings", title: "Paramètres", description: "Configuration générale.", icon: Settings, render: () => <AdminSettingsManager /> },
       { id: "database", title: "Base de données", description: "Backups, exports, entretien.", icon: Database, render: () => <AdminDatabaseManager /> },
@@ -471,16 +480,19 @@ const AdminDashboard = () => {
 
       {/* Sous-page : fil d'Ariane + contenu du module */}
       <main className="max-w-7xl mx-auto p-4 sm:p-6">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
-          <button onClick={() => selectModule("overview")} className="hover:text-foreground">Admin</button>
-          <span>/</span>
-          <span>{activeModule.groupLabel}</span>
-          <span>/</span>
-          <span className="font-medium text-foreground">{activeModule.title}</span>
-        </div>
-        <div className="bg-card rounded-xl border shadow-sm p-4 sm:p-6">
+        <AdminPageShell
+          key={activeModule.id}
+          title={activeModule.title}
+          description={activeModule.description}
+          icon={activeModule.icon}
+          breadcrumbs={[
+            { label: "Admin", onClick: () => selectModule("overview") },
+            { label: activeModule.groupLabel },
+            { label: activeModule.title },
+          ]}
+        >
           {activeModule.render()}
-        </div>
+        </AdminPageShell>
       </main>
     </div>
   );
