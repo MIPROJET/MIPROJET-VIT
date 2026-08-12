@@ -4130,6 +4130,15 @@ export type Database = {
           external_link: string
         }[]
       }
+      get_project_team_contacts: {
+        Args: { _project_id: string }
+        Returns: {
+          contact_email: string
+          contact_phone: string
+          full_name: string
+          id: string
+        }[]
+      }
       go_is_admin: { Args: { _user_id: string }; Returns: boolean }
       has_active_subscription: { Args: { _user_id: string }; Returns: boolean }
       has_role: { Args: { _role: string; _user_id: string }; Returns: boolean }
