@@ -18,6 +18,8 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, RefreshCcw, Pencil, Trash2, Archive, Check, X, Award, Star, MessageSquare, Upload } from "lucide-react";
+import { AdminBulkBar, useBulkSelection, RowCheckbox, bulkIcons } from "./ui/AdminBulkBar";
+import { logAudit, logAuditBulk } from "@/lib/adminAudit";
 
 type MPProject = {
   id: string; user_id: string; title: string; description: string | null;
