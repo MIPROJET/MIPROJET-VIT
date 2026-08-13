@@ -202,3 +202,135 @@ WHERE email ILIKE '%demo%' OR email ILIKE '%test%' OR email ILIKE '%example%';
 
 > Dès que ce SQL est exécuté : le hub de synchronisation affiche et traite les signaux,
 > les actions Go/MiPROJET+ propagent automatiquement, et la notation admin fonctionne.
+
+---
+
+# LOT — Actions en lot, conflits de sync, journal d'audit & tableau de bord sync
+
+## ✅ Livré (UI, déjà branché)
+
+- **Actions en lot avec aperçu** (`AdminBulkBar`) : toute action groupée passe désormais par un
+  **aperçu exhaustif** des entités impactées avant exécution. Branché sur MiPROJET+ :
+  valider / rejeter / archiver / **noter en lot** / supprimer (sélection multiple, tout sélectionner).
+- **Conflits de synchronisation** (`Système → Conflits de sync`) : stratégies **dernier auteur**,
+  **priorité source** et **fusion** (champ par champ), aperçu du résultat appliqué,
+  traitement unitaire ou de tous les conflits en attente.
+- **Journal d'audit** (`Système → Journal d'audit`) : recherche plein texte + filtres par module,
+  action et utilisateur, KPI et export CSV. Toutes les actions admin (création, modification,
+  archivage, suppression, validation, rejet, notation, sync, résolution de conflit) sont journalisées.
+- **Tableau de bord de synchronisation** (`Système → Tableau de bord sync`) : santé par plateforme
+  (Go / MiPROJET+ / Invest), compteurs signaux/en attente/erreurs, dernier signal,
+  historique des anomalies et **bouton de relance par module**.
+
+## 🗄️ SQL à exécuter (manuellement) — tout se branche automatiquement ensuite
+
+```sql
+-- 1) Journal d'audit admin
+CREATE TABLE IF NOT EXISTS public.admin_audit_log (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  module text NOT NULL,
+  action text NOT NULL,
+  entity_table text,
+  entity_id uuid,
+  entity_label text,
+  actor_user_id uuid,
+  actor_email text,
+  details jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+GRANT SELECT, INSERT ON public.admin_audit_log TO authenticated;
+GRANT ALL ON public.admin_audit_log TO service_role;
+
+ALTER TABLE public.admin_audit_log ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Admins read audit log" ON public.admin_audit_log;
+CREATE POLICY "Admins read audit log"
+  ON public.admin_audit_log FOR SELECT TO authenticated
+  USING (public.is_any_admin(auth.uid()));
+
+DROP POLICY IF EXISTS "Admins write audit log" ON public.admin_audit_log;
+CREATE POLICY "Admins write audit log"
+  ON public.admin_audit_log FOR INSERT TO authenticated
+  WITH CHECK (public.is_any_admin(auth.uid()) AND actor_user_id = auth.uid());
+
+CREATE INDEX IF NOT EXISTS idx_audit_created ON public.admin_audit_log (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_module  ON public.admin_audit_log (module);
+CREATE INDEX IF NOT EXISTS idx_audit_actor   ON public.admin_audit_log (actor_user_id);
+
+-- 2) Conflits de synchronisation inter-plateformes
+CREATE TABLE IF NOT EXISTS public.platform_sync_conflicts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  entity_table text NOT NULL,
+  entity_id uuid,
+  entity_label text,
+  source_platform text,
+  target_platform text,
+  source_payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+  target_payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+  source_updated_at timestamptz,
+  target_updated_at timestamptz,
+  status text NOT NULL DEFAULT 'pending',
+  resolution_strategy text,
+  resolved_payload jsonb,
+  resolved_by uuid,
+  resolved_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.platform_sync_conflicts TO authenticated;
+GRANT ALL ON public.platform_sync_conflicts TO service_role;
+
+ALTER TABLE public.platform_sync_conflicts ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Admins manage sync conflicts" ON public.platform_sync_conflicts;
+CREATE POLICY "Admins manage sync conflicts"
+  ON public.platform_sync_conflicts FOR ALL TO authenticated
+  USING (public.is_any_admin(auth.uid()))
+  WITH CHECK (public.is_any_admin(auth.uid()));
+
+DROP TRIGGER IF EXISTS trg_sync_conflicts_updated ON public.platform_sync_conflicts;
+CREATE TRIGGER trg_sync_conflicts_updated
+  BEFORE UPDATE ON public.platform_sync_conflicts
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+CREATE INDEX IF NOT EXISTS idx_conflicts_status ON public.platform_sync_conflicts (status, created_at DESC);
+
+-- 3) Détection automatique de conflit : un projet MiPROJET+ modifié après sa copie Invest
+CREATE OR REPLACE FUNCTION public.detect_mp_invest_conflict()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE v_target public.projects%ROWTYPE;
+BEGIN
+  SELECT * INTO v_target FROM public.projects
+   WHERE metadata->>'mp_project_id' = NEW.id::text LIMIT 1;
+  IF NOT FOUND THEN RETURN NEW; END IF;
+
+  IF v_target.updated_at IS NOT NULL AND OLD.updated_at IS NOT NULL
+     AND v_target.updated_at > OLD.updated_at THEN
+    INSERT INTO public.platform_sync_conflicts (
+      entity_table, entity_id, entity_label, source_platform, target_platform,
+      source_payload, target_payload, source_updated_at, target_updated_at
+    ) VALUES (
+      'projects', v_target.id, COALESCE(NEW.title, v_target.title), 'miprojet-plus', 'miprojet-invest',
+      jsonb_build_object('title', NEW.title, 'sector', NEW.sector, 'city', NEW.city, 'country', NEW.country),
+      jsonb_build_object('title', v_target.title, 'sector', v_target.sector, 'city', v_target.city, 'country', v_target.country),
+      NEW.updated_at, v_target.updated_at
+    );
+  END IF;
+  RETURN NEW;
+END; $$;
+
+DROP TRIGGER IF EXISTS trg_detect_mp_invest_conflict ON public.mp_projects;
+CREATE TRIGGER trg_detect_mp_invest_conflict
+  AFTER UPDATE ON public.mp_projects
+  FOR EACH ROW EXECUTE FUNCTION public.detect_mp_invest_conflict();
+```
+
+> Dès ce SQL exécuté : le journal d'audit se remplit automatiquement à chaque action admin,
+> les conflits Go/MiPROJET+/Invest sont détectés puis résolus depuis l'UI, et le tableau de bord
+> de synchronisation affiche l'état réel avec relance par module.
