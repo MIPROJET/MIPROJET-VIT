@@ -239,23 +239,42 @@ export const AdminMPPlusManager = () => {
               {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
             </SelectContent>
           </Select>
+          <div className="flex items-center gap-2 shrink-0">
+            <Label className="text-xs whitespace-nowrap">Note en lot</Label>
+            <Input type="number" min={0} max={100} className="w-20"
+              value={bulkScoreValue} onChange={(e) => setBulkScoreValue(Number(e.target.value))} />
+          </div>
         </>
       }
     >
+      <AdminBulkBar
+        count={bulk.count}
+        ids={bulk.selectedIds}
+        onClear={bulk.clear}
+        actions={bulkActions}
+        entityLabel="projet"
+        labelFor={labelFor}
+      />
+
       {loading ? <AdminEmptyState label="Chargement…" /> : filtered.length === 0 ? <AdminEmptyState label="Aucun projet" /> : (
         <div className="border rounded-lg overflow-x-auto">
           <Table>
             <TableHeader><TableRow>
+              <TableHead className="w-10">
+                <RowCheckbox checked={bulk.allSelected} onChange={bulk.toggleAll} />
+              </TableHead>
               <TableHead>Projet</TableHead><TableHead>Secteur</TableHead><TableHead>Score</TableHead>
               <TableHead>Statut</TableHead><TableHead className="text-right">Actions</TableHead>
             </TableRow></TableHeader>
             <TableBody>
               {filtered.map((r) => (
-                <TableRow key={r.id}>
+                <TableRow key={r.id} data-state={bulk.isSelected(r.id) ? "selected" : undefined}>
+                  <TableCell><RowCheckbox checked={bulk.isSelected(r.id)} onChange={() => bulk.toggle(r.id)} /></TableCell>
                   <TableCell className="font-medium max-w-[300px]">
                     <span className="block truncate">{r.title}</span>
                     <span className="block text-xs text-muted-foreground">{[r.city, r.country].filter(Boolean).join(", ") || "—"}</span>
                   </TableCell>
+
                   <TableCell className="text-sm text-muted-foreground">{r.sector || "—"}</TableCell>
                   <TableCell>{scores[r.id] != null ? <Badge>{scores[r.id]}/100</Badge> : <span className="text-xs text-muted-foreground">non noté</span>}</TableCell>
                   <TableCell><Badge variant="outline">{r.status || "—"}</Badge></TableCell>
