@@ -49,6 +49,7 @@ export const AdminMPPlusManager = () => {
   const [draft, setDraft] = useState<Partial<MPProject>>({});
   const [scoreDraft, setScoreDraft] = useState({ score_global: 70, niveau: "standard", notes: "" });
   const [messageDraft, setMessageDraft] = useState({ title: "", message: "" });
+  const [bulkScoreValue, setBulkScoreValue] = useState(70);
 
   const load = useCallback(async () => {
     setLoading(true);
