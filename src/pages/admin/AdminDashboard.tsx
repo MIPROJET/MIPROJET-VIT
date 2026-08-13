@@ -13,7 +13,7 @@ import {
   HelpCircle, ClipboardCheck, Sparkles, Building2,
   ShieldCheck, Settings, Wrench, BarChart3, Award, MessageSquareQuote,
   UserPlus, Mail, GraduationCap, Gift, Database, Handshake, RefreshCcw,
-  Files, Briefcase, TrendingUp,
+  Files, Briefcase, TrendingUp, Activity, GitMerge, History,
 } from "lucide-react";
 import mpLogoAsset from "@/assets/logos/miprojet.png.asset.json";
 import mpGoLogoAsset from "@/assets/logos/miprojet-go.png.asset.json";
@@ -58,6 +58,9 @@ import { AdminTestimonialsManager } from "@/components/admin/AdminTestimonialsMa
 import { AdminInvestorProspects } from "@/components/admin/AdminInvestorProspects";
 import { AdminMPInvestSync } from "@/components/admin/AdminMPInvestSync";
 import { AdminSyncHub } from "@/components/admin/AdminSyncHub";
+import { AdminSyncDashboard } from "@/components/admin/AdminSyncDashboard";
+import { AdminSyncConflicts } from "@/components/admin/AdminSyncConflicts";
+import { AdminAuditLog } from "@/components/admin/AdminAuditLog";
 import { AdminGoManager } from "@/components/admin/AdminGoManager";
 import { AdminMPPlusManager } from "@/components/admin/AdminMPPlusManager";
 import { AdminDataCleanup } from "@/components/admin/AdminDataCleanup";
@@ -205,7 +208,10 @@ const GROUPS: GroupDef[] = [
     label: "Système",
     icon: Settings,
     modules: [
+      { id: "sync-dashboard", title: "Tableau de bord sync", description: "État, erreurs et relance par plateforme.", icon: Activity, render: () => <AdminSyncDashboard /> },
       { id: "sync-hub", title: "Synchronisation plateformes", description: "Signaux Go / MiPROJET+ / Invest.", icon: RefreshCcw, render: () => <AdminSyncHub /> },
+      { id: "sync-conflicts", title: "Conflits de sync", description: "Résolution dernier auteur / priorité / fusion.", icon: GitMerge, render: () => <AdminSyncConflicts /> },
+      { id: "audit-log", title: "Journal d'audit", description: "Qui a créé, modifié, archivé, supprimé quoi.", icon: History, render: () => <AdminAuditLog /> },
       { id: "cleanup", title: "Nettoyage production", description: "Supprimer les comptes et données de démo.", icon: Wrench, render: () => <AdminDataCleanup /> },
       { id: "permissions", title: "Permissions", description: "Matrice des droits par rôle admin.", icon: ShieldCheck, render: () => <AdminPermissionsMatrix /> },
       { id: "settings", title: "Paramètres", description: "Configuration générale.", icon: Settings, render: () => <AdminSettingsManager /> },
