@@ -18,6 +18,8 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, RefreshCcw, Pencil, Trash2, Archive, Check, X, Award, Star, MessageSquare, Upload } from "lucide-react";
+import { AdminBulkBar, useBulkSelection, RowCheckbox, bulkIcons } from "./ui/AdminBulkBar";
+import { logAudit, logAuditBulk } from "@/lib/adminAudit";
 
 type MPProject = {
   id: string; user_id: string; title: string; description: string | null;
@@ -47,6 +49,7 @@ export const AdminMPPlusManager = () => {
   const [draft, setDraft] = useState<Partial<MPProject>>({});
   const [scoreDraft, setScoreDraft] = useState({ score_global: 70, niveau: "standard", notes: "" });
   const [messageDraft, setMessageDraft] = useState({ title: "", message: "" });
+  const [bulkScoreValue, setBulkScoreValue] = useState(70);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -75,16 +78,23 @@ export const AdminMPPlusManager = () => {
     });
   }, [rows, q, statusFilter]);
 
+  const bulk = useBulkSelection(filtered);
+  const labelFor = useCallback(
+    (id: string) => rows.find((r) => r.id === id)?.title || id,
+    [rows],
+  );
+
   const signal = (type: string, id: string, payload: any) =>
     supabase.rpc("emit_sync_signal", {
       _type: type, _source_table: "mp_projects", _source_id: id, _actor: null, _payload: payload, _severity: "info",
     });
 
-  const patch = async (r: MPProject, values: Partial<MPProject>, label: string) => {
+  const patch = async (r: MPProject, values: Partial<MPProject>, label: string, action: "update" | "validate" | "reject" | "archive" = "update") => {
     const { error } = await supabase.from("mp_projects").update(values as any).eq("id", r.id);
     if (error) return toast({ title: "Échec", description: error.message, variant: "destructive" });
     setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, ...values } : x)));
     await signal("plus.project.updated", r.id, values);
+    await logAudit({ module: "MiPROJET+", action, entityTable: "mp_projects", entityId: r.id, entityLabel: r.title, details: values as any });
     toast({ title: label });
   };
 
@@ -93,8 +103,64 @@ export const AdminMPPlusManager = () => {
     if (error) return toast({ title: "Échec", description: error.message, variant: "destructive" });
     setRows((prev) => prev.filter((x) => x.id !== r.id));
     await signal("plus.project.deleted", r.id, { id: r.id });
+    await logAudit({ module: "MiPROJET+", action: "delete", entityTable: "mp_projects", entityId: r.id, entityLabel: r.title });
     toast({ title: "Projet supprimé" });
   };
+
+  /* -------- Actions groupées (avec aperçu avant exécution) -------- */
+
+  const bulkStatus = async (ids: string[], values: Partial<MPProject>, action: "validate" | "reject" | "archive", label: string) => {
+    const { error } = await supabase.from("mp_projects").update(values as any).in("id", ids);
+    if (error) return toast({ title: "Échec", description: error.message, variant: "destructive" });
+    setRows((prev) => prev.map((x) => (ids.includes(x.id) ? { ...x, ...values } : x)));
+    await logAuditBulk({ module: "MiPROJET+", action, entityTable: "mp_projects" }, ids.map((id) => ({ id, label: labelFor(id) })));
+    await supabase.rpc("emit_sync_signal", {
+      _type: "plus.project.bulk_updated", _source_table: "mp_projects", _source_id: null,
+      _actor: null, _payload: { ids, values }, _severity: "info",
+    });
+    bulk.clear();
+    toast({ title: label, description: `${ids.length} projet(s)` });
+  };
+
+  const bulkDelete = async (ids: string[]) => {
+    const { error } = await supabase.from("mp_projects").delete().in("id", ids);
+    if (error) return toast({ title: "Échec", description: error.message, variant: "destructive" });
+    setRows((prev) => prev.filter((x) => !ids.includes(x.id)));
+    await logAuditBulk({ module: "MiPROJET+", action: "delete", entityTable: "mp_projects" }, ids.map((id) => ({ id, label: labelFor(id) })));
+    bulk.clear();
+    toast({ title: "Projets supprimés", description: `${ids.length} projet(s)` });
+  };
+
+  const bulkScore = async (ids: string[]) => {
+    const value = bulkScoreValue;
+    const payload = ids.map((id) => ({
+      project_id: id,
+      user_id: rows.find((r) => r.id === id)?.user_id,
+      score_global: value,
+      niveau: "standard",
+    }));
+    const { error } = await supabase.from("mp_evaluations").insert(payload as any);
+    if (error) return toast({ title: "Échec", description: error.message, variant: "destructive" });
+    setRows((prev) => [...prev]);
+    setScores((prev) => { const n = { ...prev }; ids.forEach((id) => { n[id] = value; }); return n; });
+    await logAuditBulk({ module: "MiPROJET+", action: "score", entityTable: "mp_evaluations" }, ids.map((id) => ({ id, label: labelFor(id) })));
+    bulk.clear();
+    toast({ title: "Notes enregistrées", description: `${ids.length} projet(s) à ${value}/100` });
+  };
+
+  const bulkActions = [
+    { key: "validate", label: "Valider", icon: <Check className="h-3.5 w-3.5 mr-1.5" />, capability: "write" as const,
+      confirm: "Valider {n} projet(s) sélectionné(s) ?", run: async (ids: string[]) => { await bulkStatus(ids, { status: "validated" }, "validate", "Projets validés"); } },
+    { key: "reject", label: "Rejeter", icon: <X className="h-3.5 w-3.5 mr-1.5" />, capability: "write" as const,
+      confirm: "Rejeter {n} projet(s) ?", run: async (ids: string[]) => { await bulkStatus(ids, { status: "rejected" }, "reject", "Projets rejetés"); } },
+    { key: "archive", label: "Archiver", icon: bulkIcons.unpublish, capability: "write" as const,
+      confirm: "Archiver {n} projet(s) (retrait du public) ?", run: async (ids: string[]) => { await bulkStatus(ids, { status: "archived", is_public: false }, "archive", "Projets archivés"); } },
+    { key: "score", label: `Noter (${bulkScoreValue}/100)`, icon: <Star className="h-3.5 w-3.5 mr-1.5" />, capability: "write" as const,
+      confirm: "Attribuer la note à {n} projet(s) ?", run: async (ids: string[]) => { await bulkScore(ids); } },
+    { key: "delete", label: "Supprimer", icon: bulkIcons.delete, capability: "delete" as const, destructive: true,
+      confirm: "Supprimer définitivement {n} projet(s) ?", run: async (ids: string[]) => { await bulkDelete(ids); } },
+  ];
+
 
   const saveEdit = async () => {
     if (!current) return;
@@ -103,6 +169,7 @@ export const AdminMPPlusManager = () => {
       city: draft.city, country: draft.country, status: draft.status, is_public: draft.is_public,
       short_pitch: draft.short_pitch,
     }, "Projet mis à jour");
+
     setAction(null);
   };
 
@@ -173,23 +240,42 @@ export const AdminMPPlusManager = () => {
               {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
             </SelectContent>
           </Select>
+          <div className="flex items-center gap-2 shrink-0">
+            <Label className="text-xs whitespace-nowrap">Note en lot</Label>
+            <Input type="number" min={0} max={100} className="w-20"
+              value={bulkScoreValue} onChange={(e) => setBulkScoreValue(Number(e.target.value))} />
+          </div>
         </>
       }
     >
+      <AdminBulkBar
+        count={bulk.count}
+        ids={bulk.selectedIds}
+        onClear={bulk.clear}
+        actions={bulkActions}
+        entityLabel="projet"
+        labelFor={labelFor}
+      />
+
       {loading ? <AdminEmptyState label="Chargement…" /> : filtered.length === 0 ? <AdminEmptyState label="Aucun projet" /> : (
         <div className="border rounded-lg overflow-x-auto">
           <Table>
             <TableHeader><TableRow>
+              <TableHead className="w-10">
+                <RowCheckbox checked={bulk.allSelected} onChange={bulk.toggleAll} />
+              </TableHead>
               <TableHead>Projet</TableHead><TableHead>Secteur</TableHead><TableHead>Score</TableHead>
               <TableHead>Statut</TableHead><TableHead className="text-right">Actions</TableHead>
             </TableRow></TableHeader>
             <TableBody>
               {filtered.map((r) => (
-                <TableRow key={r.id}>
+                <TableRow key={r.id} data-state={bulk.isSelected(r.id) ? "selected" : undefined}>
+                  <TableCell><RowCheckbox checked={bulk.isSelected(r.id)} onChange={() => bulk.toggle(r.id)} /></TableCell>
                   <TableCell className="font-medium max-w-[300px]">
                     <span className="block truncate">{r.title}</span>
                     <span className="block text-xs text-muted-foreground">{[r.city, r.country].filter(Boolean).join(", ") || "—"}</span>
                   </TableCell>
+
                   <TableCell className="text-sm text-muted-foreground">{r.sector || "—"}</TableCell>
                   <TableCell>{scores[r.id] != null ? <Badge>{scores[r.id]}/100</Badge> : <span className="text-xs text-muted-foreground">non noté</span>}</TableCell>
                   <TableCell><Badge variant="outline">{r.status || "—"}</Badge></TableCell>

@@ -85,13 +85,15 @@ export type BulkAction = {
 };
 
 export const AdminBulkBar = ({
-  count, ids, onClear, actions, entityLabel = "élément",
+  count, ids, onClear, actions, entityLabel = "élément", labelFor,
 }: {
   count: number;
   ids: string[];
   onClear: () => void;
   actions: BulkAction[];
   entityLabel?: string;
+  /** Libellé lisible d'une entité, utilisé dans l'aperçu avant exécution. */
+  labelFor?: (id: string) => string;
 }) => {
   const { can } = useAdminPermissions();
   const [pending, setPending] = useState<BulkAction | null>(null);
@@ -117,7 +119,7 @@ export const AdminBulkBar = ({
                 size="sm"
                 variant={a.destructive ? "destructive" : "outline"}
                 disabled={busy !== null}
-                onClick={() => (a.confirm ? setPending(a) : execute(a, ids))}
+                onClick={() => setPending(a)}
               >
                 {busy === a.key ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : a.icon}
                 {a.label}
@@ -128,23 +130,36 @@ export const AdminBulkBar = ({
         </CardContent>
       </Card>
 
+      {/* Aperçu avant exécution : liste exhaustive des entités impactées */}
       <AlertDialog open={!!pending} onOpenChange={(o) => !o && setPending(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmer l'action</AlertDialogTitle>
+            <AlertDialogTitle>Aperçu · {pending?.label}</AlertDialogTitle>
             <AlertDialogDescription>
-              {pending?.confirm?.replace("{n}", String(count))}
+              {pending?.confirm?.replace("{n}", String(count)) ??
+                `Cette action va s'appliquer à ${count} ${entityLabel}${count > 1 ? "s" : ""}.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="max-h-56 overflow-y-auto rounded-lg border bg-muted/30 p-3 space-y-1">
+            {ids.map((id, i) => (
+              <p key={id} className="text-xs truncate">
+                <span className="text-muted-foreground mr-2">{i + 1}.</span>
+                {labelFor?.(id) || id}
+              </p>
+            ))}
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={() => pending && execute(pending, ids)}>Confirmer</AlertDialogAction>
+            <AlertDialogAction onClick={() => pending && execute(pending, ids)}>
+              Exécuter ({count})
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>
   );
 };
+
 
 /** Icônes prêtes à l'emploi pour les actions groupées courantes. */
 export const bulkIcons = {
