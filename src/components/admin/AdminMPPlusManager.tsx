@@ -150,16 +150,17 @@ export const AdminMPPlusManager = () => {
 
   const bulkActions = [
     { key: "validate", label: "Valider", icon: <Check className="h-3.5 w-3.5 mr-1.5" />, capability: "write" as const,
-      confirm: "Valider {n} projet(s) sélectionné(s) ?", run: (ids: string[]) => bulkStatus(ids, { status: "validated" }, "validate", "Projets validés") },
+      confirm: "Valider {n} projet(s) sélectionné(s) ?", run: async (ids: string[]) => { await bulkStatus(ids, { status: "validated" }, "validate", "Projets validés"); } },
     { key: "reject", label: "Rejeter", icon: <X className="h-3.5 w-3.5 mr-1.5" />, capability: "write" as const,
-      confirm: "Rejeter {n} projet(s) ?", run: (ids: string[]) => bulkStatus(ids, { status: "rejected" }, "reject", "Projets rejetés") },
+      confirm: "Rejeter {n} projet(s) ?", run: async (ids: string[]) => { await bulkStatus(ids, { status: "rejected" }, "reject", "Projets rejetés"); } },
     { key: "archive", label: "Archiver", icon: bulkIcons.unpublish, capability: "write" as const,
-      confirm: "Archiver {n} projet(s) (retrait du public) ?", run: (ids: string[]) => bulkStatus(ids, { status: "archived", is_public: false }, "archive", "Projets archivés") },
+      confirm: "Archiver {n} projet(s) (retrait du public) ?", run: async (ids: string[]) => { await bulkStatus(ids, { status: "archived", is_public: false }, "archive", "Projets archivés"); } },
     { key: "score", label: `Noter (${bulkScoreValue}/100)`, icon: <Star className="h-3.5 w-3.5 mr-1.5" />, capability: "write" as const,
-      confirm: "Attribuer la note à {n} projet(s) ?", run: bulkScore },
+      confirm: "Attribuer la note à {n} projet(s) ?", run: async (ids: string[]) => { await bulkScore(ids); } },
     { key: "delete", label: "Supprimer", icon: bulkIcons.delete, capability: "delete" as const, destructive: true,
-      confirm: "Supprimer définitivement {n} projet(s) ?", run: bulkDelete },
+      confirm: "Supprimer définitivement {n} projet(s) ?", run: async (ids: string[]) => { await bulkDelete(ids); } },
   ];
+
 
   const saveEdit = async () => {
     if (!current) return;
