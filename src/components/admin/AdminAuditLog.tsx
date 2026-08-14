@@ -60,19 +60,54 @@ export const AdminAuditLog = () => {
     });
   }, [rows, q, moduleFilter, actionFilter, actorFilter]);
 
-  const exportCsv = () => {
-    const head = ["date", "module", "action", "entite", "table", "auteur", "details"];
-    const lines = filtered.map((r) => [
-      r.created_at, r.module, r.action, r.entity_label ?? "", r.entity_table ?? "",
-      r.actor_email ?? r.actor_user_id ?? "", JSON.stringify(r.details ?? {}),
-    ].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","));
-    const blob = new Blob([[head.join(","), ...lines].join("\n")], { type: "text/csv;charset=utf-8" });
+  // Pagination (gros volumes)
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  useEffect(() => { setPage(1); }, [q, moduleFilter, actionFilter, actorFilter, pageSize]);
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const pageRows = useMemo(
+    () => filtered.slice((page - 1) * pageSize, page * pageSize),
+    [filtered, page, pageSize],
+  );
+
+  const download = (content: string, mime: string, ext: string) => {
+    const blob = new Blob([content], { type: `${mime};charset=utf-8` });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `journal-audit-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `journal-audit-${new Date().toISOString().slice(0, 10)}.${ext}`;
     a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  /** Export étendu : respecte les filtres courants (toutes les pages). */
+  const exportCsv = () => {
+    const head = ["date", "module", "action", "entite", "entity_id", "table", "auteur", "details"];
+    const lines = filtered.map((r) => [
+      r.created_at, r.module, r.action, r.entity_label ?? "", r.entity_id ?? "", r.entity_table ?? "",
+      r.actor_email ?? r.actor_user_id ?? "", JSON.stringify(r.details ?? {}),
+    ].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","));
+    download([head.join(","), ...lines].join("\n"), "text/csv", "csv");
     toast({ title: "Export CSV généré", description: `${filtered.length} entrée(s)` });
   };
+
+  const exportJson = () => {
+    download(
+      JSON.stringify(
+        {
+          generated_at: new Date().toISOString(),
+          filters: { search: q || null, module: moduleFilter, action: actionFilter, actor: actorFilter },
+          count: filtered.length,
+          entries: filtered,
+        },
+        null,
+        2,
+      ),
+      "application/json",
+      "json",
+    );
+    toast({ title: "Export JSON généré", description: `${filtered.length} entrée(s)` });
+  };
+
 
   return (
     <AdminModuleShell
