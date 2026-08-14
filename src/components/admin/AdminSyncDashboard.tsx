@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RefreshCcw, Activity, AlertTriangle, CheckCircle2, Clock, Play } from "lucide-react";
 import { logAudit } from "@/lib/adminAudit";
+import { AdminAlertsBanner } from "./ui/AdminAlertsBanner";
 
 type Signal = {
   id: string;
