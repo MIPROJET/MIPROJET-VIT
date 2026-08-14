@@ -186,7 +186,7 @@ export const AdminAuditLog = () => {
               <TableHead>Entité</TableHead><TableHead>Auteur</TableHead>
             </TableRow></TableHeader>
             <TableBody>
-              {filtered.map((r) => (
+              {pageRows.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                     {new Date(r.created_at).toLocaleString("fr-FR")}
@@ -210,6 +210,30 @@ export const AdminAuditLog = () => {
           </Table>
         </div>
       )}
+
+      {!missing && !loading && filtered.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 justify-between">
+          <p className="text-xs text-muted-foreground">
+            {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, filtered.length)} sur {filtered.length}
+          </p>
+          <div className="flex items-center gap-2">
+            <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+              <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {[25, 50, 100, 250, 500].map((n) => <SelectItem key={n} value={String(n)}>{n} / page</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-xs text-muted-foreground">{page} / {pageCount}</span>
+            <Button variant="outline" size="sm" disabled={page >= pageCount} onClick={() => setPage((p) => p + 1)}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
     </AdminModuleShell>
   );
 };
