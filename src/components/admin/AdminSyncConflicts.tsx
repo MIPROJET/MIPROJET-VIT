@@ -184,7 +184,10 @@ export const AdminSyncConflicts = () => {
         </>
       }
     >
+      <AdminAlertsBanner notify={false} />
+
       <div className="grid grid-cols-3 gap-3">
+
         {(["pending", "resolved", "ignored"] as const).map((s) => (
           <Card key={s}><CardContent className="p-4">
             <p className="text-xs text-muted-foreground uppercase tracking-wide">{s}</p>
