@@ -98,7 +98,10 @@ export const AdminSyncDashboard = () => {
       icon={Activity}
       actions={<Button variant="outline" size="sm" onClick={load}><RefreshCcw className="h-4 w-4 mr-2" />Rafraîchir</Button>}
     >
+      <AdminAlertsBanner />
+
       <div className="grid gap-4 md:grid-cols-3">
+
         {stats.map((s) => (
           <Card key={s.id} className="overflow-hidden">
             <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
