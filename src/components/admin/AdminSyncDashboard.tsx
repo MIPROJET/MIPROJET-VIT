@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RefreshCcw, Activity, AlertTriangle, CheckCircle2, Clock, Play } from "lucide-react";
 import { logAudit } from "@/lib/adminAudit";
+import { AdminAlertsBanner } from "./ui/AdminAlertsBanner";
 
 type Signal = {
   id: string;
@@ -97,7 +98,10 @@ export const AdminSyncDashboard = () => {
       icon={Activity}
       actions={<Button variant="outline" size="sm" onClick={load}><RefreshCcw className="h-4 w-4 mr-2" />Rafraîchir</Button>}
     >
+      <AdminAlertsBanner />
+
       <div className="grid gap-4 md:grid-cols-3">
+
         {stats.map((s) => (
           <Card key={s.id} className="overflow-hidden">
             <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">

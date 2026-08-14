@@ -334,3 +334,54 @@ CREATE TRIGGER trg_detect_mp_invest_conflict
 > Dès ce SQL exécuté : le journal d'audit se remplit automatiquement à chaque action admin,
 > les conflits Go/MiPROJET+/Invest sont détectés puis résolus depuis l'UI, et le tableau de bord
 > de synchronisation affiche l'état réel avec relance par module.
+
+---
+
+# LOT — Nettoyage définitif, exports étendus, alertes de sync & simulation en lot
+
+## ✅ Livré (UI, déjà branché)
+- **Doublons AgriCapital supprimés définitivement** : la fiche complète (images, galerie, note 73, URL `/projects/agricapital`) est conservée et reliée au projet MiPROJET+ `b7024000…` ; les 2 fiches en double et le doublon « Laverie&repassage » ont été supprimés, évaluations rattachées à la fiche conservée.
+- **Nettoyage production v2** (`Système → Nettoyage production`) : détection démo/simulation **et** doublons sur `profiles`, `projects`, `mp_projects`, `entities`, `leads`, `opportunities`, `newsletter_subscribers` ; pour chaque doublon l'exemplaire le plus complet est conservé ; suppression définitive tracée dans le journal d'audit.
+- **Journal d'audit** : export étendu **CSV + JSON** respectant les filtres courants, pagination (25 → 500 / page).
+- **Alertes de synchronisation** : bandeau + notification quand des conflits restent en attente ou que des signaux sont en échec, avec relance rapide par plateforme (Go / MiPROJET+ / Invest).
+- **Aperçu de différence (diff)** champ par champ dans les conflits : source vs cible vs résultat, avec compteurs, selon la stratégie choisie (dernier auteur / priorité source / fusion).
+- **Mode simulation des actions en lot** : impacts affichés (créés / archivés / supprimés / validés / notés) avant toute exécution ; l'exécution réelle exige de décocher « Mode simulation ».
+
+## 🗄️ SQL à exécuter (manuellement) — notifications d'anomalies de sync
+```sql
+-- Notifie les admins dès qu'un conflit reste en attente ou qu'un signal échoue.
+CREATE OR REPLACE FUNCTION public.notify_admins_sync_anomaly()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE r record; v_title text; v_msg text;
+BEGIN
+  IF TG_TABLE_NAME = 'platform_sync_conflicts' THEN
+    v_title := 'Conflit de synchronisation en attente';
+    v_msg   := COALESCE(NEW.entity_label, NEW.entity_table) || ' — ' ||
+               COALESCE(NEW.source_platform,'?') || ' → ' || COALESCE(NEW.target_platform,'?');
+  ELSE
+    IF COALESCE(NEW.severity,'info') NOT IN ('error','critical') THEN RETURN NEW; END IF;
+    v_title := 'Signal de synchronisation en échec';
+    v_msg   := NEW.signal_type || COALESCE(' · ' || NEW.source_table, '');
+  END IF;
+
+  FOR r IN SELECT user_id FROM public.user_roles WHERE role IN ('admin','admin_operational') LOOP
+    INSERT INTO public.notifications (user_id, title, message, type, link, metadata)
+    VALUES (r.user_id, v_title, v_msg, 'sync', '/dashboard',
+            jsonb_build_object('table', TG_TABLE_NAME, 'id', NEW.id));
+  END LOOP;
+  RETURN NEW;
+END $$;
+
+DROP TRIGGER IF EXISTS trg_notify_conflict_pending ON public.platform_sync_conflicts;
+CREATE TRIGGER trg_notify_conflict_pending
+  AFTER INSERT ON public.platform_sync_conflicts
+  FOR EACH ROW EXECUTE FUNCTION public.notify_admins_sync_anomaly();
+
+DROP TRIGGER IF EXISTS trg_notify_signal_failed ON public.platform_sync_signals;
+CREATE TRIGGER trg_notify_signal_failed
+  AFTER INSERT ON public.platform_sync_signals
+  FOR EACH ROW EXECUTE FUNCTION public.notify_admins_sync_anomaly();
+```
+
+> Prérequis : le SQL du lot précédent (`admin_audit_log`, `platform_sync_conflicts`) doit être exécuté avant celui-ci.
+> Dès exécution : les alertes, les notifications et le journal d'audit se remplissent automatiquement, sans autre intervention.

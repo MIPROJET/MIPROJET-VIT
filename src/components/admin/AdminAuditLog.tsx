@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { RefreshCcw, Download, History } from "lucide-react";
+import { RefreshCcw, Download, History, FileJson, ChevronLeft, ChevronRight } from "lucide-react";
 import { AUDIT_ACTION_LABELS, type AuditEntry } from "@/lib/adminAudit";
 
 const DESTRUCTIVE = new Set(["delete", "reject", "archive"]);
@@ -60,19 +60,54 @@ export const AdminAuditLog = () => {
     });
   }, [rows, q, moduleFilter, actionFilter, actorFilter]);
 
-  const exportCsv = () => {
-    const head = ["date", "module", "action", "entite", "table", "auteur", "details"];
-    const lines = filtered.map((r) => [
-      r.created_at, r.module, r.action, r.entity_label ?? "", r.entity_table ?? "",
-      r.actor_email ?? r.actor_user_id ?? "", JSON.stringify(r.details ?? {}),
-    ].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","));
-    const blob = new Blob([[head.join(","), ...lines].join("\n")], { type: "text/csv;charset=utf-8" });
+  // Pagination (gros volumes)
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  useEffect(() => { setPage(1); }, [q, moduleFilter, actionFilter, actorFilter, pageSize]);
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const pageRows = useMemo(
+    () => filtered.slice((page - 1) * pageSize, page * pageSize),
+    [filtered, page, pageSize],
+  );
+
+  const download = (content: string, mime: string, ext: string) => {
+    const blob = new Blob([content], { type: `${mime};charset=utf-8` });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `journal-audit-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `journal-audit-${new Date().toISOString().slice(0, 10)}.${ext}`;
     a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  /** Export étendu : respecte les filtres courants (toutes les pages). */
+  const exportCsv = () => {
+    const head = ["date", "module", "action", "entite", "entity_id", "table", "auteur", "details"];
+    const lines = filtered.map((r) => [
+      r.created_at, r.module, r.action, r.entity_label ?? "", r.entity_id ?? "", r.entity_table ?? "",
+      r.actor_email ?? r.actor_user_id ?? "", JSON.stringify(r.details ?? {}),
+    ].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","));
+    download([head.join(","), ...lines].join("\n"), "text/csv", "csv");
     toast({ title: "Export CSV généré", description: `${filtered.length} entrée(s)` });
   };
+
+  const exportJson = () => {
+    download(
+      JSON.stringify(
+        {
+          generated_at: new Date().toISOString(),
+          filters: { search: q || null, module: moduleFilter, action: actionFilter, actor: actorFilter },
+          count: filtered.length,
+          entries: filtered,
+        },
+        null,
+        2,
+      ),
+      "application/json",
+      "json",
+    );
+    toast({ title: "Export JSON généré", description: `${filtered.length} entrée(s)` });
+  };
+
 
   return (
     <AdminModuleShell
@@ -83,8 +118,12 @@ export const AdminAuditLog = () => {
         <>
           <Button variant="outline" size="sm" onClick={load}><RefreshCcw className="h-4 w-4 mr-2" />Rafraîchir</Button>
           <Button variant="outline" size="sm" onClick={exportCsv} disabled={filtered.length === 0}>
-            <Download className="h-4 w-4 mr-2" />Exporter CSV
+            <Download className="h-4 w-4 mr-2" />CSV ({filtered.length})
           </Button>
+          <Button variant="outline" size="sm" onClick={exportJson} disabled={filtered.length === 0}>
+            <FileJson className="h-4 w-4 mr-2" />JSON ({filtered.length})
+          </Button>
+
         </>
       }
       toolbar={
@@ -147,7 +186,7 @@ export const AdminAuditLog = () => {
               <TableHead>Entité</TableHead><TableHead>Auteur</TableHead>
             </TableRow></TableHeader>
             <TableBody>
-              {filtered.map((r) => (
+              {pageRows.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                     {new Date(r.created_at).toLocaleString("fr-FR")}
@@ -171,6 +210,30 @@ export const AdminAuditLog = () => {
           </Table>
         </div>
       )}
+
+      {!missing && !loading && filtered.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 justify-between">
+          <p className="text-xs text-muted-foreground">
+            {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, filtered.length)} sur {filtered.length}
+          </p>
+          <div className="flex items-center gap-2">
+            <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+              <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {[25, 50, 100, 250, 500].map((n) => <SelectItem key={n} value={String(n)}>{n} / page</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-xs text-muted-foreground">{page} / {pageCount}</span>
+            <Button variant="outline" size="sm" disabled={page >= pageCount} onClick={() => setPage((p) => p + 1)}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
     </AdminModuleShell>
   );
 };

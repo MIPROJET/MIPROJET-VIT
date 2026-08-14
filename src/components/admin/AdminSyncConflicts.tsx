@@ -13,6 +13,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { RefreshCcw, GitMerge, ShieldQuestion } from "lucide-react";
 import { logAudit } from "@/lib/adminAudit";
+import { computeDiff, diffSummary, formatValue } from "@/lib/adminDiff";
+import { AdminAlertsBanner } from "./ui/AdminAlertsBanner";
 
 type Strategy = "last_writer" | "source_priority" | "merge";
 
@@ -182,7 +184,10 @@ export const AdminSyncConflicts = () => {
         </>
       }
     >
+      <AdminAlertsBanner notify={false} />
+
       <div className="grid grid-cols-3 gap-3">
+
         {(["pending", "resolved", "ignored"] as const).map((s) => (
           <Card key={s}><CardContent className="p-4">
             <p className="text-xs text-muted-foreground uppercase tracking-wide">{s}</p>
@@ -253,21 +258,51 @@ export const AdminSyncConflicts = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid sm:grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs">Source ({current.source_platform || "?"}) · {current.source_updated_at?.slice(0, 19) || "—"}</Label>
-                  <Textarea readOnly rows={8} className="font-mono text-xs" value={JSON.stringify(current.source_payload, null, 2)} />
-                </div>
-                <div>
-                  <Label className="text-xs">Cible ({current.target_platform || "?"}) · {current.target_updated_at?.slice(0, 19) || "—"}</Label>
-                  <Textarea readOnly rows={8} className="font-mono text-xs" value={JSON.stringify(current.target_payload, null, 2)} />
-                </div>
-              </div>
-              <div>
-                <Label className="text-xs">Aperçu du résultat appliqué</Label>
-                <Textarea readOnly rows={8} className="font-mono text-xs bg-muted/40"
-                  value={JSON.stringify(resolvePayload(current, strategy), null, 2)} />
-              </div>
+              {(() => {
+                const resolved = resolvePayload(current, strategy);
+                const diff = computeDiff(current.source_payload, current.target_payload, resolved);
+                const sum = diffSummary(diff);
+                return (
+                  <>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant="outline">{sum.total} champ(s)</Badge>
+                      <Badge variant={sum.changed ? "destructive" : "secondary"}>{sum.changed} divergent(s)</Badge>
+                      <Badge variant="secondary">{sum.fromSource} depuis la source</Badge>
+                      <Badge variant="secondary">{sum.fromTarget} depuis la cible</Badge>
+                    </div>
+                    <div className="border rounded-lg overflow-x-auto">
+                      <Table>
+                        <TableHeader><TableRow>
+                          <TableHead>Champ</TableHead>
+                          <TableHead>Source ({current.source_platform || "?"}) · {current.source_updated_at?.slice(0, 10) || "—"}</TableHead>
+                          <TableHead>Cible ({current.target_platform || "?"}) · {current.target_updated_at?.slice(0, 10) || "—"}</TableHead>
+                          <TableHead>Résultat</TableHead>
+                        </TableRow></TableHeader>
+                        <TableBody>
+                          {diff.map((d) => (
+                            <TableRow key={d.field} className={d.changed ? "bg-destructive/5" : undefined}>
+                              <TableCell className="font-medium text-xs whitespace-nowrap">{d.field}</TableCell>
+                              <TableCell className={`text-xs max-w-[220px] truncate ${d.winner === "source" ? "font-semibold" : "text-muted-foreground"}`}>
+                                {formatValue(d.source)}
+                              </TableCell>
+                              <TableCell className={`text-xs max-w-[220px] truncate ${d.winner === "target" ? "font-semibold" : "text-muted-foreground"}`}>
+                                {formatValue(d.target)}
+                              </TableCell>
+                              <TableCell className="text-xs max-w-[220px] truncate">{formatValue(d.resolved)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    <div>
+                      <Label className="text-xs">JSON appliqué</Label>
+                      <Textarea readOnly rows={6} className="font-mono text-xs bg-muted/40"
+                        value={JSON.stringify(resolved, null, 2)} />
+                    </div>
+                  </>
+                );
+              })()}
+
             </div>
           )}
           <DialogFooter>
