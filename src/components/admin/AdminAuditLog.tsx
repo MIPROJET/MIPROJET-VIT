@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { RefreshCcw, Download, History } from "lucide-react";
+import { RefreshCcw, Download, History, FileJson, ChevronLeft, ChevronRight } from "lucide-react";
 import { AUDIT_ACTION_LABELS, type AuditEntry } from "@/lib/adminAudit";
 
 const DESTRUCTIVE = new Set(["delete", "reject", "archive"]);
