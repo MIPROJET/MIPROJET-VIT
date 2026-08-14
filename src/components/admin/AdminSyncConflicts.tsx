@@ -13,6 +13,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { RefreshCcw, GitMerge, ShieldQuestion } from "lucide-react";
 import { logAudit } from "@/lib/adminAudit";
+import { computeDiff, diffSummary, formatValue } from "@/lib/adminDiff";
+import { AdminAlertsBanner } from "./ui/AdminAlertsBanner";
 
 type Strategy = "last_writer" | "source_priority" | "merge";
 
