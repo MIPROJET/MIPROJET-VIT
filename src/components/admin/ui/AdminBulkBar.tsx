@@ -74,6 +74,8 @@ export const AdminRoleBadge = () => {
 
 /* ---------------- Barre d'actions groupées ---------------- */
 
+export type BulkImpact = { label: string; count: number };
+
 export type BulkAction = {
   key: string;
   label: string;
@@ -82,6 +84,11 @@ export type BulkAction = {
   destructive?: boolean;
   confirm?: string;
   run: (ids: string[]) => Promise<void> | void;
+  /**
+   * Mode simulation : renvoie les impacts attendus (créés / archivés / supprimés / validés…)
+   * sans rien modifier. Par défaut, un impact générique est déduit du libellé de l'action.
+   */
+  simulate?: (ids: string[]) => Promise<BulkImpact[]> | BulkImpact[];
 };
 
 export const AdminBulkBar = ({
@@ -98,6 +105,25 @@ export const AdminBulkBar = ({
   const { can } = useAdminPermissions();
   const [pending, setPending] = useState<BulkAction | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [dryRun, setDryRun] = useState(true);
+  const [impacts, setImpacts] = useState<BulkImpact[] | null>(null);
+  const [simulating, setSimulating] = useState(false);
+
+  const openPreview = useCallback(async (action: BulkAction) => {
+    setPending(action);
+    setImpacts(null);
+    setSimulating(true);
+    try {
+      const res = action.simulate
+        ? await action.simulate(ids)
+        : [{ label: action.label, count: ids.length }];
+      setImpacts(res);
+    } catch {
+      setImpacts([{ label: action.label, count: ids.length }]);
+    } finally {
+      setSimulating(false);
+    }
+  }, [ids]);
 
   if (count === 0) return null;
   const visible = actions.filter((a) => can(a.capability));
@@ -112,6 +138,10 @@ export const AdminBulkBar = ({
       <Card className="border-primary/40 bg-primary/5 sticky top-16 z-30">
         <CardContent className="p-3 flex flex-wrap items-center gap-2">
           <Badge className="gap-1"><CheckCheck className="h-3 w-3" /> {count} {entityLabel}{count > 1 ? "s" : ""} sélectionné{count > 1 ? "s" : ""}</Badge>
+          <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+            <Checkbox checked={dryRun} onCheckedChange={(v) => setDryRun(!!v)} aria-label="Mode simulation" />
+            Mode simulation
+          </label>
           <div className="flex flex-wrap gap-2 ml-auto">
             {visible.map((a) => (
               <Button
@@ -119,7 +149,7 @@ export const AdminBulkBar = ({
                 size="sm"
                 variant={a.destructive ? "destructive" : "outline"}
                 disabled={busy !== null}
-                onClick={() => setPending(a)}
+                onClick={() => openPreview(a)}
               >
                 {busy === a.key ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : a.icon}
                 {a.label}
@@ -130,16 +160,29 @@ export const AdminBulkBar = ({
         </CardContent>
       </Card>
 
-      {/* Aperçu avant exécution : liste exhaustive des entités impactées */}
+      {/* Aperçu avant exécution : impacts simulés + liste exhaustive des entités */}
       <AlertDialog open={!!pending} onOpenChange={(o) => !o && setPending(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Aperçu · {pending?.label}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {dryRun ? "Simulation" : "Aperçu"} · {pending?.label}
+            </AlertDialogTitle>
             <AlertDialogDescription>
               {pending?.confirm?.replace("{n}", String(count)) ??
                 `Cette action va s'appliquer à ${count} ${entityLabel}${count > 1 ? "s" : ""}.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
+
+          <div className="flex flex-wrap gap-2">
+            {simulating ? (
+              <Badge variant="outline" className="gap-1"><Loader2 className="h-3 w-3 animate-spin" /> Calcul des impacts…</Badge>
+            ) : (
+              (impacts || []).map((i) => (
+                <Badge key={i.label} variant={i.count > 0 ? "secondary" : "outline"}>{i.label} : {i.count}</Badge>
+              ))
+            )}
+          </div>
+
           <div className="max-h-56 overflow-y-auto rounded-lg border bg-muted/30 p-3 space-y-1">
             {ids.map((id, i) => (
               <p key={id} className="text-xs truncate">
@@ -148,17 +191,26 @@ export const AdminBulkBar = ({
               </p>
             ))}
           </div>
+
+          <label className="flex items-center gap-2 text-xs cursor-pointer">
+            <Checkbox checked={dryRun} onCheckedChange={(v) => setDryRun(!!v)} aria-label="Mode simulation" />
+            Mode simulation — aucune modification n'est appliquée
+          </label>
+
           <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={() => pending && execute(pending, ids)}>
-              Exécuter ({count})
-            </AlertDialogAction>
+            <AlertDialogCancel>Fermer</AlertDialogCancel>
+            {!dryRun && (
+              <AlertDialogAction onClick={() => pending && execute(pending, ids)}>
+                Exécuter ({count})
+              </AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>
   );
 };
+
 
 
 /** Icônes prêtes à l'emploi pour les actions groupées courantes. */
