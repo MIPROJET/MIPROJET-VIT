@@ -118,8 +118,12 @@ export const AdminAuditLog = () => {
         <>
           <Button variant="outline" size="sm" onClick={load}><RefreshCcw className="h-4 w-4 mr-2" />Rafraîchir</Button>
           <Button variant="outline" size="sm" onClick={exportCsv} disabled={filtered.length === 0}>
-            <Download className="h-4 w-4 mr-2" />Exporter CSV
+            <Download className="h-4 w-4 mr-2" />CSV ({filtered.length})
           </Button>
+          <Button variant="outline" size="sm" onClick={exportJson} disabled={filtered.length === 0}>
+            <FileJson className="h-4 w-4 mr-2" />JSON ({filtered.length})
+          </Button>
+
         </>
       }
       toolbar={
