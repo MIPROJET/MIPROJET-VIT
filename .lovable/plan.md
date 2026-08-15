@@ -385,3 +385,119 @@ CREATE TRIGGER trg_notify_signal_failed
 
 > Prérequis : le SQL du lot précédent (`admin_audit_log`, `platform_sync_conflicts`) doit être exécuté avant celui-ci.
 > Dès exécution : les alertes, les notifications et le journal d'audit se remplissent automatiquement, sans autre intervention.
+
+---
+
+# LOT — Audit base, déduplication projets, reconnexion Go & données étendues MiPROJET+
+
+## ✅ Livré (UI, déjà branché)
+
+- **Système → Audit base de données** (`AdminDataAudit`) : scan de 9 tables
+  (`profiles`, `projects`, `mp_projects`, `entities`, `leads`, `opportunities`,
+  `newsletter_subscribers`, `investor_prospects`, `tender_subscribers`),
+  détection des comptes/données de démo (25 motifs) **et** des doublons
+  (l'exemplaire le plus complet est conservé), sélection multiple et
+  **suppression définitive** tracée dans le journal d'audit.
+  État constaté à ce jour : 0 compte démo, 0 doublon projet — un seul groupe de doublons `leads`.
+- **Système → Déduplication projets** (`AdminProjectDedupe`) : workflow complet
+  pour les projets accompagnés (périmètre MiPROJET+ ou Invest) —
+  1) choix du **projet maître**, 2) **migration des relations** (16 tables enfants MP+,
+  8 tables Invest), 3) **récupération des images et contenus manquants**
+  (couverture, logo, galerie, pitch, gouvernance…), 4) **suppression définitive**
+  du doublon + émission d'un signal `project.dedupe` vers les autres plateformes.
+- **MiPROJET Go → Reconnexion & resync Go** (`AdminGoReconnect`) : assistant en 6 étapes
+  (inventaire, détection des orphelins, reconnexion des relations produit ↔ opération ↔ profil,
+  réémission des signaux `go.sync.request` / `go.produit.sync`, propagation
+  `plus.sync.request` / `invest.sync.request`, vérification finale) avec KPI et progression.
+- **MiPROJET+ → Données étendues** (`AdminMPPlusData`) : UI pour les tables/colonnes
+  issues des dernières migrations MiPROJET+ — `mp_project_stakeholders`, `mp_project_team`,
+  `mp_recommendations` (avec « marquer traitée »), `entity_governance`, `entity_products`,
+  `mp_user_plans`, `mp_voice_usage`. Rattachement automatique au titre du projet.
+
+## 🗄️ SQL à exécuter (manuellement) — tout se branche automatiquement ensuite
+
+```sql
+-- 1) Purge admin définitive : autoriser la suppression des enregistrements audités
+DROP POLICY IF EXISTS admin_purge_leads ON public.leads;
+CREATE POLICY admin_purge_leads ON public.leads FOR DELETE TO authenticated
+USING (public.has_role(auth.uid(),'admin'));
+
+DROP POLICY IF EXISTS admin_purge_newsletter ON public.newsletter_subscribers;
+CREATE POLICY admin_purge_newsletter ON public.newsletter_subscribers FOR DELETE TO authenticated
+USING (public.has_role(auth.uid(),'admin'));
+
+DROP POLICY IF EXISTS admin_purge_prospects ON public.investor_prospects;
+CREATE POLICY admin_purge_prospects ON public.investor_prospects FOR DELETE TO authenticated
+USING (public.has_role(auth.uid(),'admin'));
+
+DROP POLICY IF EXISTS admin_purge_tender_subs ON public.tender_subscribers;
+CREATE POLICY admin_purge_tender_subs ON public.tender_subscribers FOR DELETE TO authenticated
+USING (public.has_role(auth.uid(),'admin'));
+GRANT SELECT, DELETE ON public.tender_subscribers TO authenticated;
+
+-- 2) Déduplication : l'admin doit pouvoir réaffecter project_id sur toutes les tables enfants
+DO $$
+DECLARE t text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY[
+    'mp_project_stakeholders','mp_project_team','mp_recommendations',
+    'entity_governance','entity_products','mp_project_media','mp_project_milestones',
+    'mp_document_folders','mp_documents','mp_funder_connections','mp_introductions',
+    'mp_support_tickets','mp_user_service_requests','mp_scoring_results','mp_evaluations',
+    'mp_certifications','project_evaluations','project_team','project_updates','contributions'
+  ] LOOP
+    EXECUTE format('GRANT SELECT, UPDATE, DELETE ON public.%I TO authenticated', t);
+    EXECUTE format('DROP POLICY IF EXISTS admin_dedupe_%1$s ON public.%1$I', t);
+    EXECUTE format(
+      'CREATE POLICY admin_dedupe_%1$s ON public.%1$I FOR ALL TO authenticated
+       USING (public.is_any_admin(auth.uid())) WITH CHECK (public.is_any_admin(auth.uid()))', t);
+  END LOOP;
+END $$;
+
+-- 3) Suppression définitive des projets maîtres/doublons par l'admin
+DROP POLICY IF EXISTS admin_delete_mp_projects ON public.mp_projects;
+CREATE POLICY admin_delete_mp_projects ON public.mp_projects FOR DELETE TO authenticated
+USING (public.has_role(auth.uid(),'admin'));
+
+DROP POLICY IF EXISTS admin_delete_projects ON public.projects;
+CREATE POLICY admin_delete_projects ON public.projects FOR DELETE TO authenticated
+USING (public.has_role(auth.uid(),'admin'));
+
+-- 4) Reconnexion MiPROJET Go : lecture/écriture admin sur produits & opérations
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.produits TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.operations TO authenticated;
+
+DROP POLICY IF EXISTS admin_manage_produits ON public.produits;
+CREATE POLICY admin_manage_produits ON public.produits FOR ALL TO authenticated
+USING (public.is_any_admin(auth.uid()) OR user_id = auth.uid())
+WITH CHECK (public.is_any_admin(auth.uid()) OR user_id = auth.uid());
+
+DROP POLICY IF EXISTS admin_manage_operations ON public.operations;
+CREATE POLICY admin_manage_operations ON public.operations FOR ALL TO authenticated
+USING (public.is_any_admin(auth.uid()) OR user_id = auth.uid())
+WITH CHECK (public.is_any_admin(auth.uid()) OR user_id = auth.uid());
+
+-- 5) Signaux de resynchronisation Go / MP+ / Invest émis par l'assistant
+GRANT EXECUTE ON FUNCTION public.emit_sync_signal(text, text, uuid, uuid, jsonb, text) TO authenticated;
+
+-- 6) Données étendues MiPROJET+ : lecture admin transverse
+DROP POLICY IF EXISTS admin_read_mp_plans ON public.mp_user_plans;
+CREATE POLICY admin_read_mp_plans ON public.mp_user_plans FOR SELECT TO authenticated
+USING (public.is_any_admin(auth.uid()) OR user_id = auth.uid());
+
+DROP POLICY IF EXISTS admin_read_mp_voice ON public.mp_voice_usage;
+CREATE POLICY admin_read_mp_voice ON public.mp_voice_usage FOR SELECT TO authenticated
+USING (public.is_any_admin(auth.uid()) OR user_id = auth.uid());
+
+-- 7) Nettoyage immédiat du doublon leads détecté par l'audit
+DELETE FROM public.leads l
+USING (
+  SELECT id, row_number() OVER (PARTITION BY lower(btrim(email)) ORDER BY created_at DESC) rn
+  FROM public.leads WHERE email IS NOT NULL
+) d
+WHERE l.id = d.id AND d.rn > 1;
+```
+
+> Dès ce SQL exécuté : l'audit purge définitivement, le workflow de déduplication migre
+> relations + images puis supprime le doublon partout, l'assistant Go réémet ses signaux
+> et les données étendues MiPROJET+ s'affichent dans l'admin — aucun changement de code requis.
