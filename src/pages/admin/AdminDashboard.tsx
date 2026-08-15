@@ -13,7 +13,7 @@ import {
   HelpCircle, ClipboardCheck, Sparkles, Building2,
   ShieldCheck, Settings, Wrench, BarChart3, Award, MessageSquareQuote,
   UserPlus, Mail, GraduationCap, Gift, Database, Handshake, RefreshCcw,
-  Files, Briefcase, TrendingUp, Activity, GitMerge, History,
+  Files, Briefcase, TrendingUp, Activity, GitMerge, History, Plug,
 } from "lucide-react";
 import mpLogoAsset from "@/assets/logos/miprojet.png.asset.json";
 import mpGoLogoAsset from "@/assets/logos/miprojet-go.png.asset.json";
@@ -64,6 +64,10 @@ import { AdminAuditLog } from "@/components/admin/AdminAuditLog";
 import { AdminGoManager } from "@/components/admin/AdminGoManager";
 import { AdminMPPlusManager } from "@/components/admin/AdminMPPlusManager";
 import { AdminDataCleanup } from "@/components/admin/AdminDataCleanup";
+import { AdminDataAudit } from "@/components/admin/AdminDataAudit";
+import { AdminProjectDedupe } from "@/components/admin/AdminProjectDedupe";
+import { AdminGoReconnect } from "@/components/admin/AdminGoReconnect";
+import { AdminMPPlusData } from "@/components/admin/AdminMPPlusData";
 import { AdminPageShell } from "@/components/admin/ui/AdminPageShell";
 
 type ModuleDef = {
@@ -109,6 +113,7 @@ const GROUPS: GroupDef[] = [
     logo: mpGoLogo,
     modules: [
       { id: "go-data", title: "Produits & opérations", description: "CRUD complet des données Go + propagation.", icon: Database, render: () => <AdminGoManager /> },
+      { id: "go-reconnect", title: "Reconnexion & resync Go", description: "Assistant de récupération et resynchronisation complète.", icon: Plug, render: () => <AdminGoReconnect /> },
       { id: "users", title: "Utilisateurs", description: "Comptes, rôles et abonnements.", icon: Users, render: () => <AdminUsersTable /> },
       { id: "subscriptions", title: "Abonnements", description: "Plans, souscriptions et cycles.", icon: CreditCard, render: () => <AdminSubscriptionsManager /> },
       { id: "referrals", title: "Parrainages", description: "Programme de parrainage.", icon: Gift, render: () => <AdminReferralsManager /> },
@@ -124,6 +129,7 @@ const GROUPS: GroupDef[] = [
       { id: "mp-analytics", title: "Analytiques", description: "Analytique d'usage MiPROJET+.", icon: BarChart3, render: () => <AdminMPAnalytics /> },
       { id: "mp-certifications", title: "Certifications", description: "Gérer les certifications émises.", icon: Award, render: () => <AdminMPCertificationsManager /> },
       { id: "evaluations", title: "Évaluations", description: "Résultats de scoring et évaluations.", icon: ShieldCheck, render: () => <AdminEvaluationsManager /> },
+      { id: "mp-extended", title: "Données étendues", description: "Parties prenantes, équipe, recommandations, gouvernance, plans.", icon: Database, render: () => <AdminMPPlusData /> },
       {
         id: "requests",
         title: "Demandes de services",
@@ -213,6 +219,8 @@ const GROUPS: GroupDef[] = [
       { id: "sync-conflicts", title: "Conflits de sync", description: "Résolution dernier auteur / priorité / fusion.", icon: GitMerge, render: () => <AdminSyncConflicts /> },
       { id: "audit-log", title: "Journal d'audit", description: "Qui a créé, modifié, archivé, supprimé quoi.", icon: History, render: () => <AdminAuditLog /> },
       { id: "cleanup", title: "Nettoyage production", description: "Supprimer les comptes et données de démo.", icon: Wrench, render: () => <AdminDataCleanup /> },
+      { id: "data-audit", title: "Audit base de données", description: "Comptes démo & doublons restants — purge définitive.", icon: ShieldCheck, render: () => <AdminDataAudit /> },
+      { id: "project-dedupe", title: "Déduplication projets", description: "Projet maître, migration des relations et images.", icon: GitMerge, render: () => <AdminProjectDedupe /> },
       { id: "permissions", title: "Permissions", description: "Matrice des droits par rôle admin.", icon: ShieldCheck, render: () => <AdminPermissionsMatrix /> },
       { id: "settings", title: "Paramètres", description: "Configuration générale.", icon: Settings, render: () => <AdminSettingsManager /> },
       { id: "database", title: "Base de données", description: "Backups, exports, entretien.", icon: Database, render: () => <AdminDatabaseManager /> },
