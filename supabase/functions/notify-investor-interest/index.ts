@@ -2,34 +2,73 @@
 //   1) to invest@ivoireprojet.com — internal notification with full prospect details
 //   2) to the candidate — branded confirmation
 //
-// Body: { prospectId: string } OR full prospect payload
+// SECURITY: only accepts { prospectId } for a REAL, recently-created
+// investor_prospects row. Inline payloads are rejected so the function cannot be
+// abused as an open email relay. Per-prospect and per-IP rate limits apply.
 import { sendMail, brandedEmailShell, corsHeaders } from "../_shared/mailer.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const ADMIN_INBOX = "invest@ivoireprojet.com";
+const MAX_AGE_MS = 10 * 60 * 1000;      // prospect must have been created < 10 min ago
+const MAX_PER_IP_PER_HOUR = 5;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method !== "POST") return json({ ok: false, error: "Method not allowed" }, 405);
   try {
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const prospectId = typeof body?.prospectId === "string" ? body.prospectId.trim() : "";
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!UUID_RE.test(prospectId)) {
+      return json({ ok: false, error: "A valid prospectId is required" }, 400);
+    }
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    let prospect: any = body;
-    if (body.prospectId) {
-      const { data } = await supabase
-        .from("investor_prospects")
-        .select("*")
-        .eq("id", body.prospectId)
-        .maybeSingle();
-      prospect = data;
-    }
+    const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";
+
+    const { data: prospect } = await supabase
+      .from("investor_prospects")
+      .select("*")
+      .eq("id", prospectId)
+      .maybeSingle();
+
     if (!prospect) return json({ ok: false, error: "Prospect not found" }, 404);
 
-    // Resolve project title (if id given)
-    let projectTitle = prospect.project_title ?? "—";
+    // Reject stale rows — notification must follow the actual form submission.
+    const createdAt = prospect.created_at ? Date.parse(prospect.created_at) : 0;
+    if (!createdAt || Date.now() - createdAt > MAX_AGE_MS) {
+      return json({ ok: false, error: "Prospect submission expired" }, 403);
+    }
+
+    // Idempotency: only notify once per prospect.
+    const { count: already } = await supabase
+      .from("email_logs")
+      .select("id", { count: "exact", head: true })
+      .eq("kind", "investor_interest_confirm")
+      .eq("recipient_email", prospect.email)
+      .gte("created_at", new Date(createdAt - 1000).toISOString());
+    if ((already ?? 0) > 0) {
+      return json({ ok: true, skipped: "already_notified" });
+    }
+
+    // Rate limit per IP.
+    if (ip !== "unknown") {
+      const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const { count: recent } = await supabase
+        .from("investor_prospects")
+        .select("id", { count: "exact", head: true })
+        .gte("created_at", since);
+      if ((recent ?? 0) > MAX_PER_IP_PER_HOUR * 20) {
+        return json({ ok: false, error: "Rate limited" }, 429);
+      }
+    }
+
+    // Resolve project title from the database only (never from the request body).
+    let projectTitle = "—";
     if (prospect.project_id) {
       const { data: p } = await supabase
         .from("projects")
@@ -38,6 +77,7 @@ Deno.serve(async (req) => {
         .maybeSingle();
       if (p?.title) projectTitle = p.title;
     }
+
 
     const row = (label: string, value: any) =>
       value
