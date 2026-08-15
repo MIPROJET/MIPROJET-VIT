@@ -143,6 +143,45 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_audit_log: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_user_id: string | null
+          created_at: string
+          details: Json
+          entity_id: string | null
+          entity_label: string | null
+          entity_table: string | null
+          id: string
+          module: string
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          details?: Json
+          entity_id?: string | null
+          entity_label?: string | null
+          entity_table?: string | null
+          id?: string
+          module: string
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          details?: Json
+          entity_id?: string | null
+          entity_label?: string | null
+          entity_table?: string | null
+          id?: string
+          module?: string
+        }
+        Relationships: []
+      }
       connection_requests: {
         Row: {
           admin_notes: string | null
@@ -1534,10 +1573,12 @@ export type Database = {
           currency: string | null
           description: string | null
           id: string
+          party_name: string | null
           project_id: string
           receipt_path: string | null
           record_date: string
           record_type: string
+          stakeholder_id: string | null
           updated_at: string
           user_id: string
         }
@@ -1548,10 +1589,12 @@ export type Database = {
           currency?: string | null
           description?: string | null
           id?: string
+          party_name?: string | null
           project_id: string
           receipt_path?: string | null
           record_date?: string
           record_type?: string
+          stakeholder_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -1562,10 +1605,12 @@ export type Database = {
           currency?: string | null
           description?: string | null
           id?: string
+          party_name?: string | null
           project_id?: string
           receipt_path?: string | null
           record_date?: string
           record_type?: string
+          stakeholder_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -1590,6 +1635,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_mp_scoring_coherence"
             referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "mp_financial_records_stakeholder_id_fkey"
+            columns: ["stakeholder_id"]
+            isOneToOne: false
+            referencedRelation: "mp_project_stakeholders"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1958,6 +2010,76 @@ export type Database = {
           },
           {
             foreignKeyName: "mp_project_milestones_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_mp_scoring_coherence"
+            referencedColumns: ["project_id"]
+          },
+        ]
+      }
+      mp_project_stakeholders: {
+        Row: {
+          capital_share: number | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          organization: string | null
+          phone: string | null
+          project_id: string
+          role: string | null
+          stakeholder_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          capital_share?: number | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          organization?: string | null
+          phone?: string | null
+          project_id: string
+          role?: string | null
+          stakeholder_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          capital_share?: number | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          organization?: string | null
+          phone?: string | null
+          project_id?: string
+          role?: string | null
+          stakeholder_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mp_project_stakeholders_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "mp_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mp_project_stakeholders_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_mp_ecosystem_scoring"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "mp_project_stakeholders_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "v_mp_scoring_coherence"
@@ -3101,6 +3223,66 @@ export type Database = {
           key?: string
           updated_at?: string
           value?: string | null
+        }
+        Relationships: []
+      }
+      platform_sync_conflicts: {
+        Row: {
+          created_at: string
+          entity_id: string | null
+          entity_label: string | null
+          entity_table: string
+          id: string
+          resolution_strategy: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          resolved_payload: Json | null
+          source_payload: Json
+          source_platform: string | null
+          source_updated_at: string | null
+          status: string
+          target_payload: Json
+          target_platform: string | null
+          target_updated_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id?: string | null
+          entity_label?: string | null
+          entity_table: string
+          id?: string
+          resolution_strategy?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolved_payload?: Json | null
+          source_payload?: Json
+          source_platform?: string | null
+          source_updated_at?: string | null
+          status?: string
+          target_payload?: Json
+          target_platform?: string | null
+          target_updated_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string | null
+          entity_label?: string | null
+          entity_table?: string
+          id?: string
+          resolution_strategy?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolved_payload?: Json | null
+          source_payload?: Json
+          source_platform?: string | null
+          source_updated_at?: string | null
+          status?: string
+          target_payload?: Json
+          target_platform?: string | null
+          target_updated_at?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
