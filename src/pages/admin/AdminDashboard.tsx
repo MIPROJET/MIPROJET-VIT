@@ -13,7 +13,7 @@ import {
   HelpCircle, ClipboardCheck, Sparkles, Building2,
   ShieldCheck, Settings, Wrench, BarChart3, Award, MessageSquareQuote,
   UserPlus, Mail, GraduationCap, Gift, Database, Handshake, RefreshCcw,
-  Files, Briefcase, TrendingUp, Activity, GitMerge, History,
+  Files, Briefcase, TrendingUp, Activity, GitMerge, History, Plug,
 } from "lucide-react";
 import mpLogoAsset from "@/assets/logos/miprojet.png.asset.json";
 import mpGoLogoAsset from "@/assets/logos/miprojet-go.png.asset.json";
