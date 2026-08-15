@@ -98,8 +98,9 @@ export const InvestorInterestDialog = ({ projectId, projectTitle, trigger }: Pro
     // Fire-and-forget notification (invest@ivoireprojet.com + candidate confirmation)
     try {
       await supabase.functions.invoke("notify-investor-interest", {
-        body: { prospectId: inserted?.id, ...payload, project_title: projectTitle },
+        body: { prospectId: inserted?.id },
       });
+
     } catch (e) {
       console.warn("notify-investor-interest failed:", (e as Error).message);
     }
